@@ -1,0 +1,41 @@
+---
+title: "DSA1Cleaning"
+format: html
+editor: visual
+---
+
+# Journey
+
+Data is being explored in Tableau Prep.
+
+We find:
+
+-   ID and Member_ID can be discarded, since no further datasets are provided that this data might be joined with.
+
+<!-- -->
+
+-   22'735 or 6% "null" values in emp_title.
+
+-   \>99% "no" in pymnt_plan.
+
+-   Completely Unique URL's.
+
+-   342'547 or 87% "null" in desc.
+
+-   119'915 or 30% "null" in next_pymnt_d.
+
+-   A single policy_code.
+
+-   \>99% "individual" in application_type.
+
+-   \>99% "null" in verification_status_joint.
+
+```{r}
+plot(DataSetA1)
+```
+
+TODO
+
+-   Can get rid of text
+
+-   Identify relevant attributes
