@@ -14,8 +14,7 @@ Assignment_1_Dataset <- read_delim("RawData/Assignment_1-Dataset.csv",
 
 tempData <- Assignment_1_Dataset
 
-View(tempData)
-
+# Initial exploration
 head(tempData)
 
 plot(tempData)
@@ -31,15 +30,13 @@ which(is.na(tempData$int_rate))
 clean <- function() {
 }
 
+# Split into Test and Training set
 set.seed(1)
 # help(topic = "createDataPartition", package = "caret")
 splitIndex <- createDataPartition(tempData$int_rate, p = .8, list = FALSE)
 trainData <- tempData[splitIndex,]
 testData <- tempData[-splitIndex,]
 
-View(trainData)
-
-help(topic = "randomForest", package = "randomForest")
 model <- randomForest(trainData, trainData$int_rate)
 
 

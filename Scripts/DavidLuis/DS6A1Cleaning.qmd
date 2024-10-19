@@ -36,6 +36,8 @@ plot(DataSetA1)
 
 TODO
 
--   Can get rid of text
+-   Clean Data
+
+<!-- -->
 
 -   Identify relevant attributes
