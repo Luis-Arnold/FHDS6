@@ -49,4 +49,4 @@ po/*~
 rsconnect/
 
 # Ignore Data folder
-/RawData/
+/RawData/Assignment_1-Dataset.csv
