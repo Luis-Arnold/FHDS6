@@ -20,7 +20,14 @@ head(tempData)
 plot(tempData)
 
 tempData <- tempData %>%
-  select(-id, -member_id, -desc, -pymnt_plan, -policy_code, -application_type, -verification_status_joint, -url) %>%
+  select(-id,
+  -member_id,
+  -desc,
+  -pymnt_plan,
+  -policy_code,
+  -application_type,
+  -verification_status_joint,
+  -url) %>%
   na.omit(tempData$int_rate)
 
 View(tempData)

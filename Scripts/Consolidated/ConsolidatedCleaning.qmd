@@ -4,4 +4,59 @@ format: html
 editor: visual
 ---
 
-## Cleaning
+# Journey
+
+Data is being explored in Tableau Prep.
+
+We find:
+
+-   ID and Member_ID can be discarded, since no further datasets are provided that this data might be joined with.
+
+<!-- -->
+
+-   22'735 or 6% "null" values in emp_title.
+
+-   \>99% "no" in pymnt_plan.
+
+-   Completely Unique URL's.
+
+-   342'547 or 87% "null" in desc.
+
+-   119'915 or 30% "null" in next_pymnt_d.
+
+-   A single policy_code.
+
+-   \>99% "individual" in application_type.
+
+-   \>99% "null" in verification_status_joint.
+
+```{r} plot(DataSetA1)}
+```
+
+TODO
+
+-   Clean Data
+
+<!-- -->
+
+-   Identify relevant attributes
+
+### Azul's Notes
+
+Input dataset using read_delim() with semicolon ";" as divider
+
+We are omit some columns that not relevant based on the instruction and what things that might not be relevant
+
+In terms of modelling, let us see the basic approach, the classic approach where some models only can be made using numeric Now, I will divided the dataset into chr, and numeric (potentially other type)
+
+Based on the character or text, will be omit the one that really doesnt relevant Based on the content analysis, these are the columns that will be omited - omit emp_title irrelevant to analysis and pure just character title - omit verification_status irrelevant and confusing with no dictionary about it - omit title, it is just a tittle with no further information - omit initial_list_status, it just an indication about the listing loan - omit las_credit_pull_d, no correlation within the date - omit earlieest_cr_line, no correlation within the date - omit verification_status_joint, it just the indicator for the verification After omitting all the columns above, the rest of the columns, will be changes into a factor.
+
+Now, we can get to the numeric data There is a lot of na numeric data that has na or missing value in it The range is from \< 1% to around 95% Based on this situation before doing the correlation test, Need to set the NA in the numeric value The missing value already written down in excel, With how to do with the missing data, and the reason why doing it that way
+
+After Doing the correlation test, we are seeing some stuff, However in here, I supposed that we still have to omit some numeric values. Not all of them are relevant, and also having a good correlation Criteria for omit: - irrelevant by the name from dictinoary - correlation needs to be (+-) from 0.07 (included) until 1, without that, omit it Based on the criteria, these are the column that will be in the numeric side - loan_amount - annual_inc - dti - inq_last_6mths - revoil_ufil - tol_cur_bal - total_rev_hi_lim
+
+After all done, in here, try to combine from two dataframe THen, we are seeing the correlation again, This time the data that has factor type, will be goes into dummies data Dummies data will only checking correlation is this okay or no.
+
+Then from here, the cleaning and filtering is done
+
+Just experimenting about the linear model The last one just experimenting The cleaning, officialy ends at the encoding which are df_2 or df_3
