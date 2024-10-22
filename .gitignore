@@ -50,3 +50,5 @@ rsconnect/
 
 # Ignore Data folder
 /RawData/Assignment_1-Dataset.csv
+
+/Data/
