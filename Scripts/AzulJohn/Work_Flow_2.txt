@@ -1,13 +1,13 @@
 Input dataset using read_delim() with semicolon ";" as divider
 
-We are omit some columns that not relevant based on the instruction
-and what things that might not be relevant
+We omit some columns that are not relevant based on the instruction
+And remove other things that might not be relevant
 
 In terms of modelling, let us see the basic approach,
 the classic approach where some models only can be made using numeric
 Now, I will divided the dataset into chr, and numeric (potentially other type)
 
-Based on the character or text, will be omit the one that really doesnt relevant
+Based on the character or text, will be omit the one that really doesnt seem relevant
 Based on the content analysis, these are the columns that will be omited
 - omit emp_title irrelevant to analysis and pure just character title
 - omit verification_status irrelevant and confusing with no dictionary about it
