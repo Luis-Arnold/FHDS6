@@ -42,6 +42,20 @@ library(dplyr)
 library(randomForest)
 
 # -------------------------------------
+#          UTIL FUNCTIONS
+# -------------------------------------
+createPicture <- function(picData, picName, picWidth = 1720, picHeight = 1720) {
+	png(picName, width = picWidth, height = picHeight)
+	corrplot(cor(picData),
+         method = "color",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black")
+	dev.off()
+}
+
+
+# -------------------------------------
 #             INPUT DATA
 # -------------------------------------
 
@@ -166,21 +180,33 @@ df_numeric_2 <- df_numeric %>%
 ## Checking Na or missing value
 colSums(is.na(df_numeric_2))
 
-# Clearer Image for Correlation
-## Save as PNG with larger dimensions and correlation numbers inside the squares
-png("correlation_plot.png", width = 1720, height = 1720)
-## Generate the correlation plot with numbers inside the squares
-corrplot(cor(df_numeric_2), 
-         method = "color",          # Use color for the squares
-         tl.col = "black",          # Text label color
-         tl.srt = 45,               # Rotate the text labels at 45 degrees
-         addCoef.col = "black")      # Add correlation numbers inside the squares with black text
-dev.off()  # Save and close the PNG file
+createPicture(df_numeric_2, "correlation_plot.png")
+
+# -------------------------------------
+# OMIT VARIABLES WITH LOW CORRELATION
+# -------------------------------------
+df_numeric_2 <- subset(df_numeric_2, select = -c(member_id,
+                                      dti,
+                                      delinq_2yrs,
+                                      inq_last_6mths,
+                                      revol_util,
+                                      collections_12_mths_ex_med,
+                                      policy_code,
+                                      acc_now_delinq,
+                                      tot_coll_amt))
+# -------------------------------------
+# OMIT VARIABLES WITH HIGH CORRELATION
+# -------------------------------------
+df_numeric_2 <- subset(df_numeric_2, select = -c(il_util,
+                                      open_rv_24m))
+
+createPicture(df_numeric_2, "correlation_plot3.png")
 
 # Omit some columns making new dataframe
 df_numeric_3 <- df_numeric_2[, c("int_rate","loan_amnt", "annual_inc", "dti", 
                                  "inq_last_6mths", "revol_util", 
                                  "tot_cur_bal", "total_rev_hi_lim")]
+
 
 # -------------------------------------
 #         COMBINING DATAFRAME
