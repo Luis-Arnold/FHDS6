@@ -1,0 +1,13 @@
+Now I want to see the real Linear Regression
+It turns out, that MSE is 11.6778 
+it just have 5 bonus point
+
+Then, I try to use the corss validation
+with k-method for 10 fold
+And it turns out kind of the same, for MSE is : 11.6396
+
+It has only 0.04 differences
+
+Next Steps:
+- We can seeing again the cleaning and filter data
+- And we can also using another model 
