@@ -45,6 +45,8 @@ library(randomForest)
 #             INPUT DATA
 # -------------------------------------
 
+#loan_data = Assignment_1_Dataset
+
 # Input Dataset 1
 loan_data <- read_delim("Assignment_1-Dataset.csv",
                         delim = ";",
@@ -321,19 +323,33 @@ cat("Mean Absolute Percentage Error (MAPE):", round(mape_2, 2), "%\n")
 #       RANDOM FOREST MODEL
 # -------------------------------------
 
-rf <- randomForest(int_rate ~ ., data=train_data, proximity=TRUE) print(rf)
-Call:
-  randomForest(formula = int_rate ~ ., data = train_data)
+replaceSpacesInColNames <- function(df) {
+  names(df) <- gsub(" ", "_", names(df))
+  #names(df) <- gsub("+", "more", names(df))
+  return(df)
+}
 
+names(train_data)[names(train_data) == "emp_length10+ years"] <- "emp_length10more_years"
+names(train_data)[names(train_data) == "emp_lengthn/a"] <- "emp_lengthn_a"
+names(validation_data)[names(validation_data) == "emp_length10+ years"] <- "emp_length10more_years"
+names(validation_data)[names(validation_data) == "emp_lengthn/a"] <- "emp_lengthn_a"
 
+cleaned_train <- replaceSpacesInColNames(train_data)
+cleaned_validation <- replaceSpacesInColNames(validation_data)
 
+View(train_data)
 
+View(validation_data)
 
+rf <- randomForest(int_rate ~ ., data=cleaned_train, ntree=200, proximity=FALSE, mtry=2)
 
+summary(rf)
 
+p1 <- predict(rf, newdata=cleaned_validation)
 
+mse <- mean((cleaned_validation$int_rate - p1)^2)
 
-
+mse
 
 
 
