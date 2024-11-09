@@ -316,3 +316,32 @@ cat("Mean Squared Error (MSE):", round(mse_2, 4), "\n")
 cat("Root Mean Squared Error (RMSE):", round(rmse_2, 4), "\n")
 cat("Mean Absolute Error (MAE):", round(mae_2, 4), "\n")
 cat("Mean Absolute Percentage Error (MAPE):", round(mape_2, 2), "%\n")
+
+# -------------------------------------
+#       RANDOM FOREST MODEL
+# -------------------------------------
+
+rf <- randomForest(int_rate ~ ., data=train_data, proximity=TRUE) print(rf)
+Call:
+  randomForest(formula = int_rate ~ ., data = train_data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

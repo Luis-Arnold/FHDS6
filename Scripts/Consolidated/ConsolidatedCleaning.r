@@ -251,3 +251,13 @@ testData <- tempData[-splitIndex,]
 linear_model <- lm(int_rate ~ ., data = df_3)
 # View the summary of the linear model
 summary(linear_model)
+
+
+
+
+
+
+
+
+
+
