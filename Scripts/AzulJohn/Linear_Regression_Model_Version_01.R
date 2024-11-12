@@ -351,12 +351,31 @@ mse <- mean((cleaned_validation$int_rate - p1)^2)
 
 mse
 
+# -------------------------------------
+#   RANDOM FOREST MODEL (EXPERIMENT)
+# -------------------------------------
 
+# Not pull out the dummy data, just leave as factor
+# And just leave how it is
+df_main_test <- df_2
+str(df_main_test)
 
+# Making index
+## Sample data (replace with your actual df)
+set.seed(123)  # Set seed for reproducibility
+## Split df into 90% training and 10% validation
+train_index <- sample(1:nrow(df_main_test), 0.9 * nrow(df_main_test))  # Get 90% of row indices for training
+train_data <- df_main_test[train_index, ]  # Training data
+validation_data <- df_main_test[-train_index, ]  # Validation data
+## clean Directory
+rm(chr_omit)
+rm(train_index)
 
-
-
-
+# RandomForest
+rf <- randomForest(int_rate ~ ., data=train_data, ntree=2, proximity=FALSE, mtry=2)
+predict_2 <- predict(rf, newdata=validation_data)
+mse <- mean((validation_data$int_rate - predict_2)^2)
+mse
 
 
 
