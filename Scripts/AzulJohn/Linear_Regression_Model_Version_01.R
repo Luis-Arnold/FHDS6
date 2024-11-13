@@ -181,6 +181,7 @@ dev.off()  # Save and close the PNG file
 
 # Omit some columns making new dataframe
 df_numeric_3 <- df_numeric_2[, c("int_rate","loan_amnt", "annual_inc", "dti", 
+                                        "delinq_2yrs","mths_since_last_record",
                                         "inq_last_6mths", "revol_util", 
                                         "tot_cur_bal", "total_rev_hi_lim")]
 
@@ -274,17 +275,22 @@ cat("Mean Absolute Error (MAE):", round(mae, 4), "\n")
 cat("Mean Absolute Percentage Error (MAPE):", round(mape, 2), "%\n")
 
 # -------------------------------------
-#      CROSS VALIDATION (K-METHOD)
+# CROSS VALIDATION (K-METHOD) (BEST MODEL)
 # -------------------------------------
 
 # Getting DF for Linear Regression Model
 df <- df_3
 
 # Sample data (replace with your actual df)
-set.seed(123)  # Set seed for reproducibility
+set.seed(1)  # Set seed for reproducibility
 
 # Removing the 'term60 months' column if it exists
 df <- subset(df, select = -`term60 months`)
+
+# Split df into 90% training and 10% validation
+train_index <- sample(1:nrow(df), 0.9 * nrow(df))  # Get 90% of row indices for training
+train_data <- df[train_index, ]  # Training data
+validation_data <- df[-train_index, ]  # Validation data
 
 # Set up cross-validation control (e.g., 10-fold)
 control <- trainControl(method = "cv", number = 10)
@@ -300,17 +306,19 @@ results <- model_2$resample
 print(results)
 
 # Calculate evaluation metrics on the validation set using predictions
-predictions_2 <- predict(model_2, newdata = df)
+predictions_2 <- predict(model_2, newdata = validation_data)
 
 # Calculate Evaluation Metrics
 ## Mean Squared Error (MSE)
-mse_2 <- mean((df$int_rate - predictions_2)^2)
+mse_2 <- mean((validation_data$int_rate - predictions_2)^2)
 ## Root Mean Squared Error (RMSE)
 rmse_2 <- sqrt(mse)
 ## Mean Absolute Error (MAE)
-mae_2 <- mean(abs(df$int_rate - predictions_2))
+mae_2 <- mean(abs(validation_data$int_rate - predictions_2))
 ## Mean Absolute Percentage Error (MAPE)
-mape_2 <- mean(abs((df$int_rate - predictions_2) / df$int_rate)) * 100
+mape_2 <- mean(abs((validation_data$int_rate - predictions_2) / validation_data$int_rate)) * 100
+
+saveRDS(model_2, file = "regression_model.rds")
 
 # Display the results
 cat("Evaluation Metrics on Cross-Validated Model:\n")
@@ -338,17 +346,11 @@ cleaned_train <- replaceSpacesInColNames(train_data)
 cleaned_validation <- replaceSpacesInColNames(validation_data)
 
 View(train_data)
-
 View(validation_data)
-
 rf <- randomForest(int_rate ~ ., data=cleaned_train, ntree=200, proximity=FALSE, mtry=2)
-
 summary(rf)
-
 p1 <- predict(rf, newdata=cleaned_validation)
-
 mse <- mean((cleaned_validation$int_rate - p1)^2)
-
 mse
 
 # -------------------------------------
@@ -362,7 +364,7 @@ str(df_main_test)
 
 # Making index
 ## Sample data (replace with your actual df)
-set.seed(123)  # Set seed for reproducibility
+set.seed(1)  # Set seed for reproducibility
 ## Split df into 90% training and 10% validation
 train_index <- sample(1:nrow(df_main_test), 0.9 * nrow(df_main_test))  # Get 90% of row indices for training
 train_data <- df_main_test[train_index, ]  # Training data
@@ -372,11 +374,8 @@ rm(chr_omit)
 rm(train_index)
 
 # RandomForest
-rf <- randomForest(int_rate ~ ., data=train_data, ntree=2, proximity=FALSE, mtry=2)
+rf <- randomForest(int_rate ~ ., data=train_data, ntree=150, proximity=FALSE, mtry=2)
 predict_2 <- predict(rf, newdata=validation_data)
 mse <- mean((validation_data$int_rate - predict_2)^2)
 mse
-
-
-
 
