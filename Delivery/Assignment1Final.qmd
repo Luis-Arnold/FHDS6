@@ -7,13 +7,12 @@ editor: visual
 # Set working Directory
 
 ```{r}
-# -------------------------------------
-#           SET WORK DIRECTORY
-# -------------------------------------
 
-# This directory is in my laptop, therefore it will be acces in here
+# This directory is in my laptop, therefore it will be access in here
 setwd("D:/OneDrive - FHNW/Data Science/Final_Exam")
 ```
+
+### Install Packages
 
 ```{r}
 if (!requireNamespace("readr", quietly = TRUE)) {
@@ -54,8 +53,10 @@ if (!requireNamespace("xgboost", quietly = TRUE)) {
 }
 ```
 
+### Load Packages
+
 ```{r}
-# Call out package
+
 library(plotly)
 library(corrplot)
 library(readr)
@@ -70,10 +71,9 @@ library(parallel)
 library(xgboost)
 ```
 
+### Input Data
+
 ```{r}
-# -------------------------------------
-#             INPUT DATA
-# -------------------------------------
 
 #loan_data = Assignment_1_Dataset
 
@@ -84,10 +84,10 @@ loan_data <- read_delim("Assignment_1-Dataset.csv",
                         trim_ws = TRUE)
 ```
 
+### Omit Columns
+
 ```{r}
-# -------------------------------------
-#         OMIT SOME COLUMNS
-# -------------------------------------
+
 # Omit some non-related columns
 df_1 <- subset(loan_data, select = -c(collection_recovery_fee,
                                       installment,
@@ -111,10 +111,9 @@ df_1 <- subset(loan_data, select = -c(collection_recovery_fee,
                                       desc))
 ```
 
+### Data Type Divider
+
 ```{r}
-# -------------------------------------
-#           DATA TYPE DIVIDER
-# -------------------------------------
 
 # Get the data types of each column
 column_types <- sapply(df_1, class)
@@ -136,10 +135,9 @@ for (type in unique_types) {
 rm(column_types, unique_types, type, df_type_name)
 ```
 
+### Tidy up text
+
 ```{r}
-# -------------------------------------
-#     TIDY UP CHARACTER / TEXT
-# -------------------------------------
 
 # Columns to omit
 chr_omit <- c("emp_title", "verification_status", "title", 
@@ -165,10 +163,9 @@ str(df_character_3)
 rm(chr_omit)
 ```
 
+### Tidy up numeric
+
 ```{r}
-# -------------------------------------
-#             TIDY UP NUMERIC
-# -------------------------------------
 
 # Checking some of numeric
 ## Annual_Income | Checking percentage
@@ -222,10 +219,9 @@ df_numeric_3 <- df_numeric_2[, c("int_rate","loan_amnt", "annual_inc", "dti",
                                         "tot_cur_bal", "total_rev_hi_lim")]
 ```
 
+### Combining Datamaframe
+
 ```{r}
-# -------------------------------------
-#         COMBINING DATAFRAME
-# -------------------------------------
 
 # Combining the Dataset (dataframe)
 df_2 <- cbind(df_numeric_3, df_character_3)
@@ -257,10 +253,9 @@ dev.off()  # Close the file
 df_3 <- df_dummies
 ```
 
+### Outliers
+
 ```{r}
-# -------------------------------------
-#             OUTLIERS
-# -------------------------------------
 
 # Let us check the outlier for each numerical column in the dataframe
 ## Convert df_3 to long format for easier faceting
@@ -328,10 +323,9 @@ ggplot(df_long, aes(x = variable, y = value)) +
 df_5 <- df_4 %>% select(-tot_cur_bal, -mths_since_last_record)
 ```
 
+### Cross Validation (K-METHOD)
+
 ```{r}
-# -------------------------------------
-#     CROSS VALIDATION (K-METHOD)
-# -------------------------------------
 
 # Getting DF for Linear Regression Model
 df <- df_5
@@ -375,11 +369,9 @@ mse <- mean((validation_data$int_rate - predictions)^2)
 mse
 ```
 
-```{r}
+### Checking Multicolinearity once more
 
-# -------------------------------------
-# CHECKING MULTICOLINIEARITY AGAIN
-# -------------------------------------
+```{r}
 
 # There is this warning message:
 # Warning message:
@@ -430,10 +422,9 @@ df_6 <- df_5 %>%
          -delinq_2yrs)
 ```
 
+### Cross Validation (K-METHOD) 2.0
+
 ```{r}
-# -------------------------------------
-#     CROSS VALIDATION (K-METHOD) 2.0
-# -------------------------------------
 
 # Getting DF for Linear Regression Model
 df <- df_6
@@ -467,10 +458,9 @@ mse
 # [1] 11.01383
 ```
 
+### Random Forest (Regression)
+
 ```{r}
-# -------------------------------------
-#             RANDOM FOREST
-# -------------------------------------
 
 # Last things, Random forest,
 # I kind of really exhausted
@@ -504,10 +494,9 @@ mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
 ```
 
+### Sample Stratified Method
+
 ```{r}
-# -------------------------------------
-#   TAKING SAMPLE STRATISFIED METHOD
-# -------------------------------------
 
 # My laptop is not good
 # So, lets just take a sample
@@ -533,10 +522,9 @@ df_sample <- subset(df_sample, select = -c(income_range))
 # Lets try again, shall we?
 ```
 
+### Random Forest
+
 ```{r}
-# -------------------------------------
-#          RANDOM FOREST 2
-# -------------------------------------
 
 # Split df into 90% training and 10% validation
 train_index <- sample(1:nrow(df_sample), 0.9 * nrow(df_sample))  # Get 90% of row indices for training
@@ -572,10 +560,9 @@ mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
 ```
 
+### XGBoost
+
 ```{r}
-# -------------------------------------
-#          XGBOOST
-# -------------------------------------
 
 # Lets Make the xgboost
 dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
@@ -591,5 +578,5 @@ actuals <- df$int_rate
 mse <- mean((predictions - actuals)^2)
 mse
 
-# FINALLY
+# FINALLY -> 9 both training and validation
 ```
