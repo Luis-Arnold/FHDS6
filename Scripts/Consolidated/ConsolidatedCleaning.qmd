@@ -30,8 +30,7 @@ We find:
 
 -   \>99% "null" in verification_status_joint.
 
-```{r} plot(DataSetA1)}
-```
+`{r} plot(DataSetA1)}`
 
 TODO
 
