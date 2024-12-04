@@ -28,6 +28,9 @@ if (!requireNamespace("lattice", quietly = TRUE)) {
 if (!requireNamespace("caret", quietly = TRUE)) {
   install.packages("caret")
 }
+if (!requireNamespace("keras", quietly = TRUE)) {
+  install.packages("keras")
+}
 
 # Call out package
 library(fastDummies)
@@ -36,6 +39,7 @@ library(dplyr)
 library(ggplot2)
 library(lattice)
 library(caret)
+library(keras)
 
 # -------------------------------------
 #             INPUT DATA
