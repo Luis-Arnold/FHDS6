@@ -31,6 +31,9 @@ if (!requireNamespace("caret", quietly = TRUE)) {
 if (!requireNamespace("keras", quietly = TRUE)) {
   install.packages("keras")
 }
+if (!requireNamespace("writexl", quietly = TRUE)) {
+  install.packages("writexl")
+}
 
 # Call out package
 library(fastDummies)
@@ -40,6 +43,8 @@ library(ggplot2)
 library(lattice)
 library(caret)
 library(keras)
+library(writexl)
+
 
 # -------------------------------------
 #             INPUT DATA
@@ -267,3 +272,6 @@ df_3 <- df_numeric_4 %>%
   left_join(df_encoded_2, by = "ID")
 
 str(df_3)
+
+# Let us output the data
+write_xlsx(df_3, "D:\\Software\\Github\\FHDS6\\Scripts\\AzulJohn\\clean_df_assignment_2.xlsx")
