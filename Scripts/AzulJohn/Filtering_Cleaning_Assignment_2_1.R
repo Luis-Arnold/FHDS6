@@ -34,6 +34,9 @@ if (!requireNamespace("keras", quietly = TRUE)) {
 if (!requireNamespace("writexl", quietly = TRUE)) {
   install.packages("writexl")
 }
+if (!requireNamespace("neuralnet", quietly = TRUE)) {
+  install.packages("neuralnet")
+}
 
 # Call out package
 library(fastDummies)
@@ -44,7 +47,7 @@ library(lattice)
 library(caret)
 library(keras)
 library(writexl)
-
+library(neuralnet)
 
 # -------------------------------------
 #             INPUT DATA
@@ -275,3 +278,181 @@ str(df_3)
 
 # Let us output the data
 write_xlsx(df_3, "D:\\Software\\Github\\FHDS6\\Scripts\\AzulJohn\\clean_df_assignment_2.xlsx")
+
+# -------------------------------------
+#       FEED FORWARDS NETWORK
+# -------------------------------------
+
+# STEP 1
+## Create a new dataframe to avoid modifying df_3 (now called df_main)
+df_main <- df_3
+## Exclude the ID column
+df_main <- df_main %>% select(-ID)
+## Convert 'status' to a factor
+df_main$status <- as.factor(df_main$status)
+## Split into training and testing sets
+set.seed(123)
+indices <- sample(1:nrow(df_main), size = 0.8 * nrow(df_main))
+train_data <- df_main[indices, ]
+test_data <- df_main[-indices, ]
+## One Hot Encoding
+status_one_hot <- model.matrix(~ status - 1, data = df_main)
+## Ensure the target is one-hot encoded for training
+train_y <- status_one_hot[indices, ]
+test_y <- status_one_hot[-indices, ]
+## Update your input features (X) without the status column
+train_x <- as.matrix(train_data[, -which(names(train_data) == "status")])
+test_x <- as.matrix(test_data[, -which(names(test_data) == "status")])
+
+# STEP 2
+## Modelling
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", input_shape = ncol(train_x)) %>%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dense(units = 8, activation = "softmax")  # Output layer with 8 units for 8 clas
+## Compiling
+model %>% compile(
+  loss = "categorical_crossentropy",  # For multi-class classification
+  optimizer = "adam",
+  metrics = c("accuracy")
+)
+## Train the Model
+history <- model %>% fit(
+  x = train_x,  # Input features
+  y = train_y,  # One-hot encoded target variable
+  epochs = 50,
+  batch_size = 32,
+  validation_split = 0.2
+)
+
+# -------------------------------------
+#     ACCCURACY IN TEST DATA
+# -------------------------------------
+
+# Assuming test_x and test_y are your test features and labels
+result <- model %>% evaluate(test_x, test_y)
+# Print the result
+cat("Test loss: ", result[1], "\n") # Lost 0.90
+cat("Test accuracy: ", result[2], "\n") # 0.80
+
+# -------------------------------------
+#            EXPERIMENT
+# -------------------------------------
+
+# Dropout
+#Dropout is a technique to randomly drop a fraction of neurons during training to prevent overfitting. It helps the model generalize better by making it less dependent on specific neurons.
+
+# Modelling
+model_2 <- keras_model_sequential() %>%
+  layer_dense(units = 32, activation = "relu", input_shape = ncol(train_x)) %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dropout(0.2) %>%  # Dropout with a rate of 20%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dropout(0.2) %>%  # Dropout with a rate of 20%
+  layer_dense(units = 128, activation = "relu") %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dense(units = 8, activation = "softmax")  # Output layer with 8 units for 8 clas
+
+# Compiling
+model_2 %>% compile(
+  loss = "categorical_crossentropy",  # For multi-class classification
+  optimizer = "adam",
+  metrics = c("accuracy")
+)
+
+# Train the Model
+history <- model_2 %>% fit(
+  x = train_x,  # Input features
+  y = train_y,  # One-hot encoded target variable
+  epochs = 50,
+  batch_size = 32,
+  validation_split = 0.2
+)
+
+# Assuming test_x and test_y are your test features and labels
+result_2 <- model_2 %>% evaluate(test_x, test_y)
+
+# Print the result
+cat("Test loss: ", result_2[1], "\n")
+cat("Test accuracy: ", result_2[2], "\n")
+
+
+# -------------------------------------
+#         EXPERIMENT 2
+# -------------------------------------
+
+# Step 1: Create a new dataframe to preserve the original df_main
+df <- df_main
+
+# Step 2: Convert the 'status' column to a factor (for classification)
+df$status <- as.factor(df$status)
+
+# Step 3: One-hot encode the target variable (status)
+df$status <- as.factor(df$status)
+y <- to_categorical(as.integer(df$status) - 1)  # One-hot encode the target column (status)
+
+# Step 4: Split the data into features (X) and target (y)
+X <- df %>% select(-status) %>% as.matrix()
+
+# Step 5: Set up K-fold cross-validation
+K <- 10  # Define number of folds (you can adjust K as needed)
+set.seed(123)  # For reproducibility
+
+# Create the folds using caret's createFolds function
+folds <- createFolds(df$status, k = K, list = TRUE, returnTrain = TRUE)
+
+# Step 6: Loop through each fold, train and evaluate the model
+results <- data.frame(Fold = integer(), Accuracy = numeric())  # to store results
+
+for(i in 1:K) {
+  # Split the data into training and testing sets
+  train_data <- df[folds[[i]], ]
+  test_data <- df[-folds[[i]], ]
+  
+  # Prepare the training and testing data
+  X_train <- train_data %>% select(-status) %>% as.matrix()
+  y_train <- to_categorical(as.integer(train_data$status) - 1)
+  
+  X_test <- test_data %>% select(-status) %>% as.matrix()
+  y_test <- to_categorical(as.integer(test_data$status) - 1)
+  
+  # Step 7: Build the feedforward neural network model
+  model_3 <- keras_model_sequential() %>%
+    layer_dense(units = 32, activation = "relu", input_shape = ncol(train_x)) %>%
+    layer_dense(units = 64, activation = "relu") %>%
+    layer_dense(units = 128, activation = "relu") %>%
+    layer_dropout(0.5) %>%  # Dropout with a rate of 50%
+    layer_dense(units = 256, activation = "relu") %>%
+    layer_dropout(0.2) %>%  # Dropout with a rate of 20%
+    layer_dense(units = 128, activation = "relu") %>%
+    layer_dropout(0.5) %>%  # Dropout with a rate of 50%
+    layer_dense(units = 64, activation = "relu") %>%
+    layer_dense(units = 32, activation = "relu") %>%
+    layer_dense(units = ncol(y_train), activation = 'softmax')  # Multi-class output
+  
+  # Compile the model
+  model_3 %>% compile(
+    loss = 'categorical_crossentropy',
+    optimizer = optimizer_adam(),
+    metrics = c('accuracy')
+  )
+  
+  # Step 8: Train the model
+  model_3 %>% fit(X_train, y_train, epochs = 50, batch_size = 32, verbose = 0)
+  
+  # Step 9: Evaluate the model on the test set
+  evaluation <- model_3 %>% evaluate(X_test, y_test, verbose = 0)
+  
+  # Step 10: Store the results (accuracy)
+  results <- rbind(results, data.frame(Fold = i, Accuracy = evaluation[2]))
+}
+
+# Print the stored results for each fold
+print(results)
