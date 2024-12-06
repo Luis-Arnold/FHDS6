@@ -456,3 +456,45 @@ for(i in 1:K) {
 
 # Print the stored results for each fold
 print(results)
+
+# -------------------------------------
+#         EXPERIMENT 3
+# -------------------------------------
+
+model_4 <- keras_model_sequential() %>%
+  layer_dense(units = 32, input_shape = ncol(train_x)) %>%
+  layer_batch_normalization() %>%
+  layer_activation("relu") %>%
+  layer_dense(units = 64) %>%
+  layer_batch_normalization() %>%
+  layer_activation("relu") %>%
+  layer_dense(units = 128, kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dropout(0.3) %>%
+  layer_dense(units = 128) %>%
+  layer_batch_normalization() %>%
+  layer_activation("relu") %>%
+  layer_dropout(0.3) %>%
+  layer_dense(units = 8, activation = "softmax")
+
+model_4 %>% compile(
+  optimizer = optimizer_adam(learning_rate = 0.001),
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+history <- model_4 %>% fit(
+  train_x, train_y,
+  epochs = 100,
+  batch_size = 32,
+  validation_split = 0.2,
+  callbacks = list(
+    callback_early_stopping(monitor = "val_loss", patience = 10),
+    callback_reduce_lr_on_plateau(monitor = "val_loss", factor = 0.5, patience = 5)
+  )
+)
+
+# Assuming test_x and test_y are your test features and labels
+result_4 <- model_4 %>% evaluate(test_x, test_y)
+# Print the result
+cat("Test loss: ", result_4[1], "\n")
+cat("Test accuracy: ", result_4[2], "\n")
