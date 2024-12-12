@@ -43,6 +43,16 @@ if (!requireNamespace("future.apply", quietly = TRUE)) {
 if (!requireNamespace("purrr", quietly = TRUE)) {
   install.packages("purrr")
 }
+if (!requireNamespace("readxl", quietly = TRUE)) {
+  install.packages("readxl")
+}
+if (!requireNamespace("RSNNS", quietly = TRUE)) {
+  install.packages("RSNNS")
+}
+if (!requireNamespace("keras", quietly = TRUE)) {
+  install.packages("keras")
+}
+
 
 # Call out package
 library(fastDummies)
@@ -56,6 +66,8 @@ library(writexl)
 library(neuralnet)
 library(purrr)
 library(future.apply)
+library(readxl)
+library(RSNNS)
 
 # -------------------------------------
 #             INPUT DATA
@@ -262,9 +274,19 @@ str(df_4)
 # Let us output the data
 write_xlsx(df_4, "D:\\Software\\Github\\FHDS6\\Scripts\\AzulJohn\\clean_df_assignment_2_2.xlsx")
 
+# Just Read Excel if you neededd ! remove # !
+# df_4 <- read_excel("D:/Software/Github/FHDS6/Scripts/AzulJohn/clean_df_assignment_2_2.xlsx")
+
+
 # -------------------------------------
 #       FEED FORWARDS NETWORK
 # -------------------------------------
+
+# Why Choose MLP/FNN for Your Data?
+# Structured Data: One-hot encoding and standardized numerical data are common formats for tabular datasets, which MLPs handle efficiently.
+# No Sequential Dependence: Since the data lacks a sequential aspect, models like RNNs or LSTMs are unnecessary.
+# Flexible Input: MLPs can easily handle mixed data types (categorical as one-hot and numerical as continuous).
+# Behavior Prediction: FNNs excel at classification tasks, such as predicting a categorical "status."
 
 # STEP 1
 ## Create a new dataframe to avoid modifying df_3 (now called df_main)
@@ -366,9 +388,9 @@ cat("Test accuracy: ", result_2[2], "\n")
 # -------------------------------------
 
 # Parameters
-k <- 10 # Number of folds
+k <- 20 # Number of folds
 epochs <- 250
-batch_size <- 32
+batch_size <- 50
 
 # Assuming train_x and train_y are your training features and labels
 # Ensure they are matrices or data frames
@@ -444,11 +466,12 @@ all_accuracies <- sapply(all_results, function(x) x[[2]]) # Extract accuracy val
 cat("Mean Validation Loss: ", mean(all_losses), "\n")
 cat("Mean Validation Accuracy: ", mean(all_accuracies), "\n")
 
+
 # -------------------------------------
 #       SAVING THE MODEL
 # -------------------------------------
 
-save_model_hdf5(model, "D:/OneDrive - FHNW/Data Science/Final_Exam/nn_model_1.rds")
-save_model_hdf5(model_2, "D:/OneDrive - FHNW/Data Science/Final_Exam/nn_model_2.rds")
-save_model_hdf5(model_3, "D:/OneDrive - FHNW/Data Science/Final_Exam/nn_model_3.rds")
+save_model_hdf5(model, "model_1.h5")
+save_model_hdf5(model_2, "model_2.h5")
+save_model_hdf5(model_3, "model_3.h5")
 
