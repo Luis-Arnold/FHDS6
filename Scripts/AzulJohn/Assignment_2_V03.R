@@ -475,3 +475,61 @@ save_model_hdf5(model, "model_1.h5")
 save_model_hdf5(model_2, "model_2.h5")
 save_model_hdf5(model_3, "model_3.h5")
 
+# -------------------------------------
+#           PIPELINE DRAFT
+# -------------------------------------
+
+# Install necessary Things
+install.packages("keras")
+install.packages("e1071")  # For confusionMatrix
+library(keras)
+library(e1071)
+
+# Data Preparing
+df_4 <- read_excel("D:/Software/Github/FHDS6/Scripts/AzulJohn/clean_df_assignment_2_2.xlsx")
+df_4$status <- as.factor(df_4$status)
+
+# Preparing the X and Y
+X <- df_4 %>% select(-c(ID, status))
+X <- as.matrix(X)
+Y <- data.frame(status = df_4$status)
+Y <- model.matrix(~ status - 1, data = Y)
+
+# Input model
+model_1 <- load_model_hdf5("D:/Software/Github/FHDS6/Scripts/AzulJohn/model_1.h5")
+model_2 <- load_model_hdf5("D:/Software/Github/FHDS6/Scripts/AzulJohn/model_2.h5")
+model_3 <- load_model_hdf5("D:/Software/Github/FHDS6/Scripts/AzulJohn/model_3.h5")
+
+# Seeing The Result
+result_1 <- model_1 %>% evaluate(X, Y)
+result_2 <- model_2 %>% evaluate(X, Y)
+result_3 <- model_3 %>% evaluate(X, Y)
+
+# Predicting using each model
+pred1 <- predict(model_1, X)
+pred2 <- predict(model_2, X)
+pred3 <- predict(model_3, X)
+
+# Convert probabilities to class labels (assuming multi-class)
+pred1_class <- apply(pred1, 1, which.max) - 1 
+pred2_class <- apply(pred2, 1, which.max) - 1
+pred3_class <- apply(pred3, 1, which.max) - 1
+
+# Convert actual values (Y) to class labels
+Y_class <- apply(Y, 1, which.max) - 1
+
+# Confusion Matrix for each model
+conf_matrix_1 <- confusionMatrix(factor(pred1_class), factor(Y_class))
+conf_matrix_2 <- confusionMatrix(factor(pred2_class), factor(Y_class))
+conf_matrix_3 <- confusionMatrix(factor(pred3_class), factor(Y_class))
+
+# View the confusion matrices
+print("Confusion Matrix for Model 1:")
+print(conf_matrix_1)
+cat("Accuracy: ", result_1[2], "\n")
+print("Confusion Matrix for Model 2:")
+print(conf_matrix_2)
+cat("Accuracy: ", result_2[2], "\n")
+print("Confusion Matrix for Model 3:")
+print(conf_matrix_3)
+cat("Accuracy: ", result_3[2], "\n")
