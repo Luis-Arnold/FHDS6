@@ -97,35 +97,34 @@ We omit some of the irrelevant columns
 
 ```{r}
 
-if ("funded_amnt" %in% names(loan_data)) {
-  loan_data <- subset(loan_data, select = -c(collection_recovery_fee,
-                                        installment,
-                                        funded_amnt,
-                                        funded_amnt_inv,
-                                        issue_d,
-                                        last_pymnt_amnt,
-                                        last_pymnt_d,
-                                        loan_status,
-                                        next_pymnt_d,
-                                        out_prncp,
-                                        out_prncp_inv,
-                                        pymnt_plan,
-                                        recoveries,
-                                        total_pymnt,
-                                        total_pymnt_inv,
-                                        total_rec_int,
-                                        total_rec_late_fee,
-                                        total_rec_prncp,
-                                        url,
-                                        desc,
-                                        emp_title,
-                                        verification_status,
-                                        title, 
-                                        initial_list_status,
-                                        last_credit_pull_d,
-                                        earliest_cr_line,
-                                        verification_status_joint))
-}
+loan_data <- subset(loan_data, select = -c(collection_recovery_fee,
+                                      installment,
+                                      funded_amnt,
+                                      funded_amnt_inv,
+                                      issue_d,
+                                      last_pymnt_amnt,
+                                      last_pymnt_d,
+                                      loan_status,
+                                      next_pymnt_d,
+                                      out_prncp,
+                                      out_prncp_inv,
+                                      pymnt_plan,
+                                      recoveries,
+                                      total_pymnt,
+                                      total_pymnt_inv,
+                                      total_rec_int,
+                                      total_rec_late_fee,
+                                      total_rec_prncp,
+                                      url,
+                                      desc,
+                                      emp_title,
+                                      verification_status,
+                                      title, 
+                                      initial_list_status,
+                                      last_credit_pull_d,
+                                      earliest_cr_line,
+                                      verification_status_joint))
+
 
 head(loan_data)
 ```
@@ -268,7 +267,7 @@ df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti",
 ```{r}
 
 # Combining the Dataset (dataframe)
-df_2 <- cbind(df_numeric_3, df_character)
+df_2 <- cbind(df_numeric, df_character)
 ```
 
 ```{r}
@@ -292,7 +291,7 @@ dummy_vars <- model.matrix(~ . - 1, data = df_2[, factor_cols])  # Exclude the i
 
 ```{r}
 ## Combine dummy variables with the original data frame (excluding factor columns)
-df_dummies <- cbind(df_2[, !factor_cols], dummy_vars)  # Keep non-factor columns and add dummy variables
+df_3 <- cbind(df_2[, !factor_cols], dummy_vars)  # Keep non-factor columns and add dummy variables
 
 ```
 
@@ -307,7 +306,7 @@ rm(factor_cols)
 
 # Corelation test
 ## Calculate the correlation matrix
-correlation_matrix <- cor(df_dummies, use = "pairwise.complete.obs")  # Use pairwise complete observations
+correlation_matrix <- cor(df_3, use = "pairwise.complete.obs")  # Use pairwise complete observations
 ```
 
 ```{r}
@@ -322,12 +321,6 @@ View(correlation_matrix)
 png("correlation_plot_2.png", width = 1800, height = 1800)
 corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
 dev.off()  # Close the file
-```
-
-```{r}
-
-## df_dummies to df_3
-df_3 <- df_dummies
 ```
 
 ### Outliers
@@ -348,7 +341,7 @@ ggplot(df_long, aes(x = variable, y = value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   facet_wrap(~ variable, scales = "free_y", ncol = 3)
 
-# Based on the picture, it looks like only "loan_amnt" that not having outliers
+# Based on the picture, it looks like only "loan_amnt" does not have outliers
 # lets take out the outliers
 
 # Some data we need to capping the outlier and other we can remove the outlier
@@ -364,6 +357,7 @@ get_iqr_bounds <- function(column) {
   upper_bound <- Q3 + 1.5 * IQR_value
   return(c(lower_bound, upper_bound))
 }
+
 # Step 1: Create `df_3_no_outliers` by removing outliers for specified columns
 df_3_no_outliers <- df_3
 for (col in c("revol_util", "total_rev_hi_lim", "dti")) {
@@ -371,6 +365,7 @@ for (col in c("revol_util", "total_rev_hi_lim", "dti")) {
   df_3_no_outliers <- df_3_no_outliers[df_3_no_outliers[[col]] >= bounds[1] & 
                                          df_3_no_outliers[[col]] <= bounds[2], ]
 }
+
 # Step 2: Create `df_3_capped` by capping outliers for specified columns
 df_3_capped <- df_3_no_outliers  # Start from `df_3_no_outliers` for consistency
 for (col in c("annual_inc", "delinq_2yrs", "inq_last_6mths")) {
@@ -378,6 +373,7 @@ for (col in c("annual_inc", "delinq_2yrs", "inq_last_6mths")) {
   df_3_capped[[col]] <- ifelse(df_3_capped[[col]] < bounds[1], bounds[1],
                                ifelse(df_3_capped[[col]] > bounds[2], bounds[2], df_3_capped[[col]]))
 }
+
 # Step 3: Assign the final result to `df_4` and remove unnevessary dataframe
 df_4 <- df_3_capped
 rm(df_3_capped,df_3_no_outliers)
