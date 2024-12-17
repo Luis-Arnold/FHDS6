@@ -146,7 +146,7 @@ unique_types <- unique(column_types)
 for (type in unique_types) {
   df_type_name <- paste0("df_", gsub(" ", "_", type))
   assign(df_type_name, loan_data[, column_types == type, drop = FALSE])
-  print(paste("Data frame created for type:", df_type_name))
+  cat(paste("Data frame created for type:", df_type_name))
 }
 
 rm(loan_data, column_types, unique_types, type, df_type_name)
@@ -659,141 +659,114 @@ Calculate MSE
 ```{r}
 
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
-mse_rf
+cat("MSE for Random Forest:", mse_rf, "\n")
+
+rm(train_data, validation_data, mse_rf)
 ```
 
 ### Sample Stratified Method
 
+Due to the limitations of our devices, we try stratified sampling.
+
+Dividing income into 5 equal-width ranges.
+
 ```{r}
 
-# My laptop is not good
-# So, lets just take a sample
-# Before taking the sample with stratisfied,
-# We need to make our category references,
-# I try to make it by divided the range automarically
-
-# Divide income into 5 equal-width ranges
-df_7 <- df_6 %>%
+df_stratified <- df_united %>%
   mutate(income_range = cut(annual_inc, breaks = 5,
                             labels = c("Very Low", "Low", "Medium", "High", "Very High")))
-
-
 ```
 
+We make the sample data, 25% of each income range.
+
 ```{r}
-# Lets make the sample data 25% from each income_range
-df_sample <- df_7 %>%
+
+df_stratified <- df_stratified %>%
   group_by(income_range) %>%
   sample_frac(size = 0.25) %>%
   ungroup()
-
-
 ```
 
-```{r}
-# Do not forget to delete the income_range afterwards
-# If dont, it will having a multicollinearity
-df_sample <- subset(df_sample, select = -c(income_range))
-
-# Lets try again, shall we?
-```
-
-### Random Forest
+We remove the income range, to prevent multicollinearity.
 
 ```{r}
 
-# Split df into 90% training and 10% validation
-train_index <- sample(1:nrow(df_sample), 0.9 * nrow(df_sample))  # Get 90% of row indices for training
-
+df_stratified <- subset(df_stratified, select = -c(income_range))
 ```
 
+### Random Forest with stratified data
+
 ```{r}
-train_data <- df_sample[train_index, ]  # Training data
-validation_data <- df_sample[-train_index, ]  # Validation dat
 
-# Lets clean the column names
-## Define a function to clean column names
-
+train_index <- sample(1:nrow(df_stratified), 0.9 * nrow(df_stratified))
+train_data_strat <- df_stratified[train_index, ]
+validation_data_strat <- df_stratified[-train_index, ]
 ```
 
-```{r}
-clean_column_names <- function(data) {
-  colnames(data) <- gsub(" ", "_", colnames(data))  # Replace spaces with underscores
-  colnames(data) <- gsub("\\`", "", colnames(data))  # Remove backticks
-  colnames(data) <- gsub("\\+", "_", colnames(data))  # Replace plus signs with underscores
-  colnames(data) <- gsub("n/a", "_na", colnames(data))  # Replace 'n/a' with '_na'
-  return(data)
-}
+Cleaning column names again
 
+```{r}
+
+train_data_strat <- clean_column_names(train_data_strat)
+validation_data_strat <- clean_column_names(validation_data_strat)
 ```
 
-```{r}
-## Apply the function to both datasets
-train_data <- clean_column_names(train_data)
-validation_data <- clean_column_names(validation_data)
-
-
-```
+Train a model with stratified Data.
 
 ```{r}
-# Random forest
-model_rf <- randomForest(int_rate ~ ., data = train_data,
+
+model_rf <- randomForest(int_rate ~ ., data = train_data_strat,
                          importance = FALSE,
                          ntree = 500,
                          mtry = 3, 
                          do.trace = TRUE, 
                          parallel = TRUE)
-
-
 ```
 
 ```{r}
-# Make predictions on the test data
-predictions_rf <- predict(model_rf, newdata = validation_data)
 
-
+predictions_rf <- predict(model_rf, newdata = validation_data_strat)
 ```
 
 ```{r}
-# Calculate the MSE
+
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
-mse_rf
+cat("MSE: ", mse_rf)
 ```
 
 ### XGBoost
 
+Lastly we try XGBoosting.
+
 ```{r}
 
-# Lets Make the xgboost
 dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
-
 ```
 
 ```{r}
+
 model_xgb <- xgboost(data = dtrain, max_depth = 10, eta = 0.1, nrounds = 100, objective = "reg:squarederror")
+```
 
+We test our Data, converting to XGBoost matrix and removing the target variable.
 
+```{r}
+
+dtest <- xgb.DMatrix(data = as.matrix(df_united[,-1]))
 ```
 
 ```{r}
-# Testing the xgboost data
-## Prepare the test data (convert to xgboost DMatrix)
-dtest <- xgb.DMatrix(data = as.matrix(df[,-1]))  # remove target column
-```
 
-```{r}
-## Generate predictions
 predictions <- predict(model_xgb, dtest)
 ```
 
+We calculate the MSE
+
 ```{r}
 
-## Calculate MSE
 actuals <- df$int_rate
 
 mse <- mean((predictions - actuals)^2)
 
-print("mse: " + mse)
-
-# FINALLY -> 9 both training and validation
+cat("MSE: ", mse)
 ```
