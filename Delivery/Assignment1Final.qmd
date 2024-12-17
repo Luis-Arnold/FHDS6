@@ -4,7 +4,9 @@ format: html
 editor: visual
 ---
 
-# Set working Directory
+# Preparation
+
+## Set working Directory
 
 ```{r}
 
@@ -86,6 +88,8 @@ loan_data <- read_delim(data_path,
 rm(data_path)
 ```
 
+# Cleaning
+
 ### Omit Columns
 
 ```{r}
@@ -145,7 +149,7 @@ for (type in unique_types) {
   print(paste("Data frame created for type:", df_type_name))
 }
 
-rm(column_types, unique_types, type, df_type_name)
+rm(loan_data, column_types, unique_types, type, df_type_name)
 ```
 
 ### Tidy up textual data
@@ -198,9 +202,13 @@ if (length(missingCols) > 0) {
 } else {
   cat("No columns with mising values.\n")
 }
+
+rm(missingCols)
 ```
 
 ## Impute Data
+
+Either with Mean or 0
 
 ```{r}
 
@@ -224,9 +232,10 @@ df_numeric <- df_numeric %>%
             ~ ifelse(is.na(.), 0, .))
 ```
 
+Check for missing values
+
 ```{r}
 
-## Checking Na or missing value
 missingCols <- names(df_numeric)[colSums(is.na(df_numeric)) > 0]
 if (length(missingCols) > 0) {
   cat("Columns with missing values:", paste(missingCols, collapse = ", "), "\n")
@@ -235,27 +244,46 @@ if (length(missingCols) > 0) {
 }
 ```
 
+Get rid of attributes with a standard variation of 0
+
 ```{r}
 
-# Clearer Image for Correlation
-## Save as PNG with larger dimensions and correlation numbers inside the squares
+df_numeric = df_numeric[, sapply(df_numeric, function(x) sd(x) != 0)]
+```
+
+## Visualize correlation
+
+```{r}
+
 png("correlation_plot.png", width = 1720, height = 1720)
-
 ```
 
 ```{r}
 
-## Generate the correlation plot with numbers inside the squares
 corrplot(cor(df_numeric), 
-         method = "color",          # Use color for the squares
-         tl.col = "black",          # Text label color
-         tl.srt = 45,               # Rotate the text labels at 45 degrees
-         addCoef.col = "black")      # Add correlation numbers inside the squares with black text
-
+         method = "color",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black")
 ```
 
+Save the correlation Matrix
+
 ```{r}
-# Omit some columns making new dataframe
+
+corrplot(cor(df_numeric), 
+         method = "color",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black")
+
+dev.off() # expect null device
+```
+
+Omit more values
+
+```{r}
+
 df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti", 
                                         "delinq_2yrs","mths_since_last_record",
                                         "inq_last_6mths", "revol_util", 
@@ -266,74 +294,75 @@ df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti",
 
 ```{r}
 
-# Combining the Dataset (dataframe)
-df_2 <- cbind(df_numeric, df_character)
+df_united <- cbind(df_numeric, df_character)
+
+rm(df_numeric, df_character)
+```
+
+Omit Zip Code since we have addr_state
+
+```{r}
+
+df_united <- df_united[, !(names(df_united) %in% c("zip_code"))]
+```
+
+Identify factor columns
+
+```{r}
+
+factor_cols <- sapply(df_united, is.factor)
+```
+
+Exclude intercept and create dummy variables for the factor columns
+
+```{r}
+
+dummy_vars <- model.matrix(~ . - 1, data = df_united[, factor_cols])
+```
+
+Combine dummy variables, excluding factor columns
+
+```{r}
+
+df_united <- cbind(df_united[, !factor_cols], dummy_vars)
+
+rm(dummy_vars, factor_cols)
 ```
 
 ```{r}
 
-# Omit zip code, because we have addr_state
-df_2 <- df_2[, !(names(df_2) %in% c("zip_code"))]
-```
-
-```{r}
-# Seeing again correlation test to see the correlation
-## Identify factor columns in df_2
-factor_cols <- sapply(df_2, is.factor)
-
-```
-
-```{r}
-## Create dummy variables for the factor columns
-dummy_vars <- model.matrix(~ . - 1, data = df_2[, factor_cols])  # Exclude the intercept
-
-```
-
-```{r}
-## Combine dummy variables with the original data frame (excluding factor columns)
-df_3 <- cbind(df_2[, !factor_cols], dummy_vars)  # Keep non-factor columns and add dummy variables
-
-```
-
-```{r}
-
-## Delete variable
-rm(dummy_vars)
-rm(factor_cols)
-```
-
-```{r}
-
-# Corelation test
-## Calculate the correlation matrix
-correlation_matrix <- cor(df_3, use = "pairwise.complete.obs")  # Use pairwise complete observations
-```
-
-```{r}
-
-## View the correlation matrix
-View(correlation_matrix)
-```
-
-```{r}
-
-## Save the correlation plot as a PNG
+correlation_matrix <- cor(df_united, use = "pairwise.complete.obs")
 png("correlation_plot_2.png", width = 1800, height = 1800)
+```
+
+```{r}
+
+corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
+```
+
+```{r}
+
 corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
 dev.off()  # Close the file
 ```
 
 ### Outliers
 
+We analyse our numerical data for outliers, converting the data into long format for easier faceting.
+
 ```{r}
 
-# Let us check the outlier for each numerical column in the dataframe
-## Convert df_3 to long format for easier faceting
-df_long <- df_3 %>%
+df_long <- df_united %>%
   select(loan_amnt, annual_inc, dti, delinq_2yrs, mths_since_last_record,
          inq_last_6mths, revol_util, tot_cur_bal, total_rev_hi_lim) %>%
   pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
-## Create combined boxplot with faceting
+
+```
+
+Boxplot with faceting
+
+```{r}
+
 ggplot(df_long, aes(x = variable, y = value)) +
   geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
   labs(title = "Boxplots of Numeric Columns", x = "Variable", y = "Value") +
@@ -341,14 +370,19 @@ ggplot(df_long, aes(x = variable, y = value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   facet_wrap(~ variable, scales = "free_y", ncol = 3)
 
-# Based on the picture, it looks like only "loan_amnt" does not have outliers
-# lets take out the outliers
+rm(df_long)
+```
 
-# Some data we need to capping the outlier and other we can remove the outlier
-# Based on the visualizer The one that will be remove is revol_util, total_rev_hi_lim, and dti
-# Based on the visualizer The one that will be capping is annual_inc, delinq_2yrs and inq_last_6mths
+It seems like only loan_amnt does not have outliers. We decide to take out the outliers.
 
-# Helper function to calculate IQR bounds
+We decide to remove outliers for revol_util, total_rev_hi_lim and dti.
+
+We also decide to perform capping on annual_inc, delinq_2yrs and inq_last_6mths.
+
+Helper function for IQR bounds
+
+```{r}
+
 get_iqr_bounds <- function(column) {
   Q1 <- quantile(column, 0.25, na.rm = TRUE)
   Q3 <- quantile(column, 0.75, na.rm = TRUE)
@@ -357,34 +391,41 @@ get_iqr_bounds <- function(column) {
   upper_bound <- Q3 + 1.5 * IQR_value
   return(c(lower_bound, upper_bound))
 }
+```
 
-# Step 1: Create `df_3_no_outliers` by removing outliers for specified columns
-df_3_no_outliers <- df_3
+Removing outliers in specified columns.
+
+```{r}
+
 for (col in c("revol_util", "total_rev_hi_lim", "dti")) {
-  bounds <- get_iqr_bounds(df_3_no_outliers[[col]])
-  df_3_no_outliers <- df_3_no_outliers[df_3_no_outliers[[col]] >= bounds[1] & 
-                                         df_3_no_outliers[[col]] <= bounds[2], ]
+  bounds <- get_iqr_bounds(df_united[[col]])
+  df_united <- df_united[df_united[[col]] >= bounds[1] & 
+                         df_united[[col]] <= bounds[2], ]
 }
+```
 
-# Step 2: Create `df_3_capped` by capping outliers for specified columns
-df_3_capped <- df_3_no_outliers  # Start from `df_3_no_outliers` for consistency
+Capping outliers for specified columns
+
+```{r}
+
 for (col in c("annual_inc", "delinq_2yrs", "inq_last_6mths")) {
-  bounds <- get_iqr_bounds(df_3_capped[[col]])
-  df_3_capped[[col]] <- ifelse(df_3_capped[[col]] < bounds[1], bounds[1],
-                               ifelse(df_3_capped[[col]] > bounds[2], bounds[2], df_3_capped[[col]]))
+  bounds <- get_iqr_bounds(df_united[[col]])
+  df_united[[col]] <- ifelse(df_united[[col]] < bounds[1], bounds[1], ifelse(df_united[[col]] > bounds[2], bounds[2], df_united[[col]]))
 }
+```
 
-# Step 3: Assign the final result to `df_4` and remove unnevessary dataframe
-df_4 <- df_3_capped
-rm(df_3_capped,df_3_no_outliers)
+Visualizing outliers with Boxplot again
 
-# lets check the visulalizer again
-## Convert df_4 to long format for easier faceting
-df_long <- df_4 %>%
+```{r}
+
+df_long <- df_united %>%
   select(loan_amnt, annual_inc, dti, delinq_2yrs, mths_since_last_record,
          inq_last_6mths, revol_util, tot_cur_bal, total_rev_hi_lim) %>%
   pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
-## Create combined boxplot with faceting
+```
+
+```{r}
+
 ggplot(df_long, aes(x = variable, y = value)) +
   geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
   labs(title = "Boxplots of Numeric Columns", x = "Variable", y = "Value") +
@@ -392,177 +433,231 @@ ggplot(df_long, aes(x = variable, y = value)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   facet_wrap(~ variable, scales = "free_y", ncol = 3)
 
-# Based on the second picture, it will be best, if we just not use tot_cur_bal and mths_since_last_record
-df_5 <- df_4 %>% select(-tot_cur_bal, -mths_since_last_record)
+rm(df_long, col, bounds, missingCols, correlation_matrix)
+```
+
+We decide to omittot_cur_bal and mths_since_last_record, given the remaining outliers.
+
+Removing delinq_2yrs for null values.
+
+```{r}
+
+df_united <- df_united %>% select(-tot_cur_bal, -mths_since_last_record, -delinq_2yrs)
 ```
 
 ### Cross Validation (K-METHOD)
 
 ```{r}
 
-# Getting DF for Linear Regression Model
-df <- df_5
+set.seed(1)
+head(df_united)
+```
 
-# Sample data (replace with your actual df)
-set.seed(1)  # Set seed for reproducibility
+We decide to remove term60 months.
 
-# Removing the 'term60 months' column if it exists
-df <- subset(df, select = -`term60 months`)
+```{r}
 
-# Split df into 90% training and 10% validation
-train_index <- sample(1:nrow(df), 0.9 * nrow(df))  # Get 90% of row indices for training
-train_data <- df[train_index, ]  # Training data
-validation_data <- df[-train_index, ]  # Validation data
+df_united <- subset(df_united, select = -`term60 months`)
+```
 
-# Set up cross-validation control (e.g., 10-fold)
+Splitting data into training and validation (90/10)
+
+```{r}
+
+train_index <- sample(1:nrow(df_united), 0.9 * nrow(df_united))
+train_data <- df_united[train_index, ]
+validation_data <- df_united[-train_index, ]
+```
+
+Set up 10 fold Cross validation control
+
+```{r}
+
 control <- trainControl(method = "cv", number = 10)
+```
 
-# Train the Linear Model using cross-validation
-# model <- train(int_rate ~ ., data = train_data, method = "lm", trControl = control)
+## Train linear model with cross-validation
 
-# Checking model
-# summary(model)
-# IT looks like delinq_2yrs having an NA moment, we can exclude it
-df <- subset(df, select = -delinq_2yrs)
+```{r}
 
-# Split df into 90% training and 10% validation
-train_index <- sample(1:nrow(df), 0.9 * nrow(df))  # Get 90% of row indices for training
-train_data <- df[train_index, ]  # Training data
-validation_data <- df[-train_index, ]  # Validation data
-
-# Train the Linear Model using cross-validation
 model <- train(int_rate ~ ., data = train_data, method = "lm", trControl = control)
+```
 
-# Calculate evaluation metrics on the validation set using predictions
+Calculating evaluation metrics on validation set
+
+```{r}
+
 predictions <- predict(model, newdata = validation_data)
+```
 
-# Calculate Evaluation Metrics
-## Mean Squared Error (MSE)
+Calculating mean squared error (MSE)
+
+```{r}
+
 mse <- mean((validation_data$int_rate - predictions)^2)
 mse
 ```
 
 ### Checking Multicolinearity once more
 
+We receive an error for the Cross-validation approach
+
+"prediction from rank-deficient fit; attr(\*, "non-estim") has doubtful cases"
+
+Might be an issue with Multicolinearity
+
 ```{r}
 
-# There is this warning message:
-# Warning message:
-#   In predict.lm(modelFit, newdata) :
-#   prediction from rank-deficient fit; attr(*, "non-estim") has doubtful cases
-# There is perhaps something to do with the multicoloniarity
-
-# Checking multicollinearity
 final_model <- model$finalModel
 vif(final_model)
+```
 
-# In this case:
-  
-# Some variables like home_ownershipMORTGAGE,
-# home_ownershipOWN, and home_ownershipRENT
-# have very high VIF values (e.g., 1.7e+05, 1.65e+05).
-# These very high values likely indicate that the variables are highly correlated
-# with each other, which could lead to multicollinearity problems.
+```{r}
 
-# The other predictors like loan_amnt, annual_inc, dti, inq_last_6mths,
-# and revol_util have VIF values around 1, indicating no multicollinearity.
+rm(control, train_data, validation_data, model, final_model)
+rm(train_index, predictions, train_index, mse, missingCols, col, bounds, correlation_matrix)
+```
 
-# Let see again the cor matrix
-# USing plotly so you can zoom in and out easly for the plot
+It seems there are aliased coefficients in the model.
 
-# Convert correlation matrix to a long format for plotly
-cor_matrix <- cor(df_4)
-cor_matrix_long <- as.data.frame(as.table(cor_matrix))
+Some variables like home_ownershipMORTGAGE, home_ownershipOWN, home_ownershipRENT have very high VIF (e.g. 1.7e+05)
 
-# Create an interactive heatmap
+This suggests a too high correlation and causes issues with multicollinearity.
+
+The other predictors like loan_amnt, annual_inc, dti, inq_last_6mths and revol_util have VIF values around 1, indicating no multicollinearity.
+
+We create another correlation matrix for analysis.
+
+```{r}
+
+cor_matrix_long <- as.data.frame(as.table(cor(df_united)))
+```
+
+Create an interactive heatmap (Enables zoom)
+
+```{r}
+
 plot_ly(data = cor_matrix_long, x = ~Var1, y = ~Var2, z = ~Freq, 
         type = "heatmap", colors = colorRampPalette(c("blue", "white", "red"))(100)) %>%
   layout(title = "Correlation Matrix", xaxis = list(title = ""), 
          yaxis = list(title = ""))
-# You can zoom in and out easly and you can make the things bigger or smaller
 
-# Based on the picture, we can say that these are the variable having multicollinearity
-# homeowenrship_RENT -- home_ownershipMORTGAGE
-# purposedebt_consolidation -- purposecredit_card
-# We can try to delete one of them
-# in here these are the column that we delete homeowenrship_RENT & purposedebt_consolidation
-# lets take the dataframe from df_5 and put in df_6 with also remove some things
-
-df_6 <- df_5 %>%
-  select(-`term60 months`, 
-         -home_ownershipRENT, 
-         -purposedebt_consolidation, 
-         -delinq_2yrs)
+rm(cor_matrix_long)
 ```
 
-### Cross Validation (K-METHOD) 2.0
+The following seem to cause the issue with multicollinearity:
+
+-   homeowenrship_RENT
+
+-   home_ownershipMORTGAGE
+
+-   purposedebt_consolidation
+
+-   purposecredit_card
 
 ```{r}
 
-# Getting DF for Linear Regression Model
-df <- df_6
+df_united <- df_united %>%
+  select(-home_ownershipRENT, 
+         -purposedebt_consolidation)
+```
 
-# Sample data (replace with your actual df)
-set.seed(1)  # Set seed for reproducibility
+## Cross Validation (K-METHOD) Second attampt
 
-# Split df into 90% training and 10% validation
-train_index <- sample(1:nrow(df), 0.9 * nrow(df))  # Get 90% of row indices for training
-train_data <- df[train_index, ]  # Training data
-validation_data <- df[-train_index, ]  # Validation data
+```{r}
 
-# Set up cross-validation control (e.g., 10-fold)
+set.seed(42)
+```
+
+Preparing training and validation dataset
+
+```{r}
+
+train_index <- sample(1:nrow(df_united), 0.9 * nrow(df_united))
+```
+
+```{r}
+
+train_data <- df_united[train_index, ]
+validation_data <- df_united[-train_index, ]
+```
+
+```{r}
+
 control <- trainControl(method = "cv", number = 10)
+```
 
-# Split df into 90% training and 10% validation
-train_index <- sample(1:nrow(df), 0.9 * nrow(df))  # Get 90% of row indices for training
-train_data <- df[train_index, ]  # Training data
-validation_data <- df[-train_index, ]  # Validation data
+Train linear Model using cross-validation
 
-# Train the Linear Model using cross-validation
+```{r}
+
 model <- train(int_rate ~ ., data = train_data, method = "lm", trControl = control)
+```
 
-# Calculate evaluation metrics on the validation set using predictions
+```{r}
+
 predictions <- predict(model, newdata = validation_data)
+```
 
-# Calculate Evaluation Metrics
-## Mean Squared Error (MSE)
+Calculate MSE again
+
+```{r}
+
 mse <- mean((validation_data$int_rate - predictions)^2)
 mse
-# [1] 11.01383
-```
 
-### Random Forest (Regression)
+# [1] 10.9398
+```
 
 ```{r}
 
-# Last things, Random forest,
-# I kind of really exhausted
+rm(model, mse, predictions, train_index, control)
+```
 
-# Lets clean the column names
-## Define a function to clean column names
+# Random Forest (Regression)
+
+We need to clean the function names for random forest.
+
+```{r}
+
 clean_column_names <- function(data) {
-  colnames(data) <- gsub(" ", "_", colnames(data))  # Replace spaces with underscores
-  colnames(data) <- gsub("\\`", "", colnames(data))  # Remove backticks
-  colnames(data) <- gsub("\\+", "_", colnames(data))  # Replace plus signs with underscores
-  colnames(data) <- gsub("n/a", "_na", colnames(data))  # Replace 'n/a' with '_na'
+  colnames(data) <- gsub(" ", "_", colnames(data))
+  colnames(data) <- gsub("\\`", "", colnames(data))
+  colnames(data) <- gsub("\\+", "_", colnames(data))
+  colnames(data) <- gsub("n/a", "_na", colnames(data))
   return(data)
 }
-## Apply the function to both datasets
+```
+
+```{r}
+
 train_data <- clean_column_names(train_data)
 validation_data <- clean_column_names(validation_data)
+```
 
-# Random forest
+## Train a random forest model
+
+```{r}
+
 model_rf <- randomForest(int_rate ~ ., data = train_data,
                          importance = FALSE,
                          ntree = 100,
                          mtry = 3, 
                          do.trace = TRUE, 
                          parallel = TRUE)
+```
 
-# Make predictions on the test data
+Make predictions for random forest
+
+```{r}
+
 predictions_rf <- predict(model_rf, newdata = validation_data)
+```
 
-# Calculate the MSE
+Calculate MSE
+
+```{r}
+
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
 ```
@@ -582,12 +677,20 @@ df_7 <- df_6 %>%
   mutate(income_range = cut(annual_inc, breaks = 5,
                             labels = c("Very Low", "Low", "Medium", "High", "Very High")))
 
+
+```
+
+```{r}
 # Lets make the sample data 25% from each income_range
 df_sample <- df_7 %>%
   group_by(income_range) %>%
   sample_frac(size = 0.25) %>%
   ungroup()
 
+
+```
+
+```{r}
 # Do not forget to delete the income_range afterwards
 # If dont, it will having a multicollinearity
 df_sample <- subset(df_sample, select = -c(income_range))
@@ -601,11 +704,19 @@ df_sample <- subset(df_sample, select = -c(income_range))
 
 # Split df into 90% training and 10% validation
 train_index <- sample(1:nrow(df_sample), 0.9 * nrow(df_sample))  # Get 90% of row indices for training
+
+```
+
+```{r}
 train_data <- df_sample[train_index, ]  # Training data
 validation_data <- df_sample[-train_index, ]  # Validation dat
 
 # Lets clean the column names
 ## Define a function to clean column names
+
+```
+
+```{r}
 clean_column_names <- function(data) {
   colnames(data) <- gsub(" ", "_", colnames(data))  # Replace spaces with underscores
   colnames(data) <- gsub("\\`", "", colnames(data))  # Remove backticks
@@ -613,10 +724,18 @@ clean_column_names <- function(data) {
   colnames(data) <- gsub("n/a", "_na", colnames(data))  # Replace 'n/a' with '_na'
   return(data)
 }
+
+```
+
+```{r}
 ## Apply the function to both datasets
 train_data <- clean_column_names(train_data)
 validation_data <- clean_column_names(validation_data)
 
+
+```
+
+```{r}
 # Random forest
 model_rf <- randomForest(int_rate ~ ., data = train_data,
                          importance = FALSE,
@@ -625,9 +744,17 @@ model_rf <- randomForest(int_rate ~ ., data = train_data,
                          do.trace = TRUE, 
                          parallel = TRUE)
 
+
+```
+
+```{r}
 # Make predictions on the test data
 predictions_rf <- predict(model_rf, newdata = validation_data)
 
+
+```
+
+```{r}
 # Calculate the MSE
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
@@ -639,19 +766,34 @@ mse_rf
 
 # Lets Make the xgboost
 dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
+
+```
+
+```{r}
 model_xgb <- xgboost(data = dtrain, max_depth = 10, eta = 0.1, nrounds = 100, objective = "reg:squarederror")
 
+
+```
+
+```{r}
 # Testing the xgboost data
 ## Prepare the test data (convert to xgboost DMatrix)
 dtest <- xgb.DMatrix(data = as.matrix(df[,-1]))  # remove target column
+```
+
+```{r}
 ## Generate predictions
 predictions <- predict(model_xgb, dtest)
+```
+
+```{r}
+
 ## Calculate MSE
 actuals <- df$int_rate
+
 mse <- mean((predictions - actuals)^2)
-mse
+
+print("mse: " + mse)
 
 # FINALLY -> 9 both training and validation
-
-
 ```
