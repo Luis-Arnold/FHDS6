@@ -9,7 +9,7 @@ editor: visual
 ```{r}
 
 # This directory is in my laptop, therefore it will be access in here
-setwd("D:/OneDrive - FHNW/Data Science/Final_Exam")
+setwd("C:/Users/luisj/Documents/Github/FHDS6/RawData")
 ```
 
 ### Install Packages
@@ -197,7 +197,7 @@ missingCols <- names(df_numeric)[colSums(is.na(df_numeric)) > 0]
 if (length(missingCols) > 0) {
   cat("Columns with missing values:", paste(missingCols, collapse = ", "), "\n")
 } else {
-  cat("No columns with missing values.\n")
+  cat("No columns with mising values.\n")
 }
 ```
 
@@ -241,16 +241,23 @@ if (length(missingCols) > 0) {
 # Clearer Image for Correlation
 ## Save as PNG with larger dimensions and correlation numbers inside the squares
 png("correlation_plot.png", width = 1720, height = 1720)
+
+```
+
+```{r}
+
 ## Generate the correlation plot with numbers inside the squares
 corrplot(cor(df_numeric), 
          method = "color",          # Use color for the squares
          tl.col = "black",          # Text label color
          tl.srt = 45,               # Rotate the text labels at 45 degrees
          addCoef.col = "black")      # Add correlation numbers inside the squares with black text
-dev.off()  # Save and close the PNG file
 
+```
+
+```{r}
 # Omit some columns making new dataframe
-df_numeric_3 <- df_numeric_2[, c("int_rate","loan_amnt", "annual_inc", "dti", 
+df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti", 
                                         "delinq_2yrs","mths_since_last_record",
                                         "inq_last_6mths", "revol_util", 
                                         "tot_cur_bal", "total_rev_hi_lim")]
@@ -262,30 +269,63 @@ df_numeric_3 <- df_numeric_2[, c("int_rate","loan_amnt", "annual_inc", "dti",
 
 # Combining the Dataset (dataframe)
 df_2 <- cbind(df_numeric_3, df_character)
+```
+
+```{r}
 
 # Omit zip code, because we have addr_state
 df_2 <- df_2[, !(names(df_2) %in% c("zip_code"))]
+```
 
+```{r}
 # Seeing again correlation test to see the correlation
 ## Identify factor columns in df_2
 factor_cols <- sapply(df_2, is.factor)
+
+```
+
+```{r}
 ## Create dummy variables for the factor columns
 dummy_vars <- model.matrix(~ . - 1, data = df_2[, factor_cols])  # Exclude the intercept
+
+```
+
+```{r}
 ## Combine dummy variables with the original data frame (excluding factor columns)
 df_dummies <- cbind(df_2[, !factor_cols], dummy_vars)  # Keep non-factor columns and add dummy variables
+
+```
+
+```{r}
+
 ## Delete variable
 rm(dummy_vars)
 rm(factor_cols)
+```
+
+```{r}
 
 # Corelation test
 ## Calculate the correlation matrix
 correlation_matrix <- cor(df_dummies, use = "pairwise.complete.obs")  # Use pairwise complete observations
+```
+
+```{r}
+
 ## View the correlation matrix
 View(correlation_matrix)
+```
+
+```{r}
+
 ## Save the correlation plot as a PNG
 png("correlation_plot_2.png", width = 1800, height = 1800)
 corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
 dev.off()  # Close the file
+```
+
+```{r}
+
 ## df_dummies to df_3
 df_3 <- df_dummies
 ```
@@ -616,4 +656,6 @@ mse <- mean((predictions - actuals)^2)
 mse
 
 # FINALLY -> 9 both training and validation
+
+
 ```
