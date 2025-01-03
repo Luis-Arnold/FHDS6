@@ -3,7 +3,7 @@
 # -------------------------------------
 
 # This directory is in my laptop, therefore it will be acces in here
-setwd("D:/OneDrive - FHNW/Data Science/Final_Exam")
+setwd("D:/Software/Github/FHDS6/Scripts/AzulJohn")
 
 # -------------------------------------
 #           INSTALL LIBRARY
@@ -476,6 +476,7 @@ predictions_rf <- predict(model_rf, newdata = validation_data)
 # Calculate the MSE
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
+# 12.13814
 
 # -------------------------------------
 #   TAKING SAMPLE STRATISFIED METHOD
@@ -540,10 +541,14 @@ predictions_rf <- predict(model_rf, newdata = validation_data)
 # Calculate the MSE
 mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
 mse_rf
+# 12. 07976
 
 # -------------------------------------
 #          XGBOOST
 # -------------------------------------
+
+# Select only column
+df_test <- df[, colnames(train_data)]  # Select only matching columns
 
 # Lets Make the xgboost
 dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
@@ -551,12 +556,32 @@ model_xgb <- xgboost(data = dtrain, max_depth = 10, eta = 0.1, nrounds = 100, ob
 
 # Testing the xgboost data
 ## Prepare the test data (convert to xgboost DMatrix)
-dtest <- xgb.DMatrix(data = as.matrix(df[,-1]))  # remove target column
+dtest <- xgb.DMatrix(data = as.matrix(validation_data[,-1]))  # remove target column
 ## Generate predictions
 predictions <- predict(model_xgb, dtest)
 ## Calculate MSE
-actuals <- df$int_rate
+actuals <- validation_data$int_rate
+mse <- mean((predictions - actuals)^2)
+mse
+# 9.350091
+
+# Testing in all data
+df_test <- df[, colnames(train_data)]  # Select only matching columns
+# Testing the xgboost data
+## Prepare the test data (convert to xgboost DMatrix)
+dtest <- xgb.DMatrix(data = as.matrix(df_test[,-1]))  # remove target column
+## Generate predictions
+predictions <- predict(model_xgb, dtest)
+## Calculate MSE
+actuals <- df_test$int_rate
 mse <- mean((predictions - actuals)^2)
 mse
 
+# 8.575916
+
 # FINALLY
+
+# Save the model
+saveRDS(model_xgb, "Assignment_1_XGBmodel.rds")
+# Testing
+xgb_ <- readRDS("Assignment_1_XGBmodel.rds")
