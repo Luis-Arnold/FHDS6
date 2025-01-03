@@ -569,7 +569,7 @@ df_united <- df_united %>%
 
 ```{r}
 
-set.seed(42)
+set.seed(1)
 ```
 
 Preparing training and validation dataset
@@ -785,4 +785,5 @@ Save Model as RDS File
 ```{r}
 
 #saveRDS(model_xgb, file = "model_xgb.rds")
+
 ```
