@@ -184,16 +184,6 @@ df_6 <- df %>%
 
 train_data <- df_6
 
-clean_column_names <- function(data) {
-  colnames(data) <- gsub(" ", "_", colnames(data))
-  colnames(data) <- gsub("\\`", "", colnames(data))
-  colnames(data) <- gsub("\\+", "_", colnames(data))
-  colnames(data) <- gsub("n/a", "_na", colnames(data))
-  return(data)
-}
-
-train_data <- clean_column_names(train_data)
-
 # Lets Make the xgboost
 dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
 model_xgb <- xgboost(data = dtrain, max_depth = 10, eta = 0.1, nrounds = 100, objective = "reg:squarederror")

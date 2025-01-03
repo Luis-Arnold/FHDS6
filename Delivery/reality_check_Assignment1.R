@@ -127,16 +127,15 @@ df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti",
                              "inq_last_6mths", "revol_util", 
                              "tot_cur_bal", "total_rev_hi_lim")]
 
+df_united <- cbind(df_numeric, df_character)
 
-df_2 <- cbind(df_numeric, df_character)
+df_united <- df_united[, !(names(df_united) %in% c("zip_code"))]
 
-df_2 <- df_2[, !(names(df_2) %in% c("zip_code"))]
+factor_cols <- sapply(df_united, is.factor)
 
-factor_cols <- sapply(df_2, is.factor)
+dummy_vars <- model.matrix(~ . - 1, data = df_united[, factor_cols])
 
-dummy_vars <- model.matrix(~ . - 1, data = df_2[, factor_cols])
-
-df_3 <- cbind(df_2[, !factor_cols], dummy_vars)
+df_united <- cbind(df_united[, !factor_cols], dummy_vars)
 
 get_iqr_bounds <- function(column) {
   Q1 <- quantile(column, 0.25, na.rm = TRUE)
@@ -147,60 +146,49 @@ get_iqr_bounds <- function(column) {
   return(c(lower_bound, upper_bound))
 }
 
-df_3_no_outliers <- df_3
+df_united_no_outliers <- df_united
 for (col in c("revol_util", "total_rev_hi_lim", "dti")) {
-  bounds <- get_iqr_bounds(df_3_no_outliers[[col]])
-  df_3_no_outliers <- df_3_no_outliers[df_3_no_outliers[[col]] >= bounds[1] & 
-                                         df_3_no_outliers[[col]] <= bounds[2], ]
+  bounds <- get_iqr_bounds(df_united_no_outliers[[col]])
+  df_united_no_outliers <- df_united_no_outliers[df_united_no_outliers[[col]] >= bounds[1] & 
+                                                   df_united_no_outliers[[col]] <= bounds[2], ]
 }
 
-df_3_capped <- df_3_no_outliers  # Start from `df_3_no_outliers` for consistency
+df_united_capped <- df_united_no_outliers  # Start from `df_united_no_outliers` for consistency
 for (col in c("annual_inc", "delinq_2yrs", "inq_last_6mths")) {
-  bounds <- get_iqr_bounds(df_3_capped[[col]])
-  df_3_capped[[col]] <- ifelse(df_3_capped[[col]] < bounds[1], bounds[1],
-                               ifelse(df_3_capped[[col]] > bounds[2], bounds[2], df_3_capped[[col]]))
+  bounds <- get_iqr_bounds(df_united_capped[[col]])
+  df_united_capped[[col]] <- ifelse(df_united_capped[[col]] < bounds[1], bounds[1],
+                               ifelse(df_united_capped[[col]] > bounds[2], bounds[2], df_united_capped[[col]]))
 }
 
-df_4 <- df_3_capped
-rm(df_3_capped,df_3_no_outliers)
+df_united <- df_united_capped
+rm(df_united_capped,df_united_no_outliers)
 
-df <- df_4 %>% select(-tot_cur_bal, -mths_since_last_record)
+df_united <- df_united %>% select(-tot_cur_bal, -mths_since_last_record)
 
-df_6 <- df %>%
+df_united <- df_united %>%
   select(-`term60 months`, 
          -home_ownershipRENT, 
          -purposedebt_consolidation, 
          -delinq_2yrs)
 
-test_data <- df_6
+secret_data <- df_united
 
-clean_column_names <- function(data) {
-  colnames(data) <- gsub(" ", "_", colnames(data))
-  colnames(data) <- gsub("\\`", "", colnames(data))
-  colnames(data) <- gsub("\\+", "_", colnames(data))
-  colnames(data) <- gsub("n/a", "_na", colnames(data))
-  return(data)
-}
 
-preprocessed_test_data <- clean_column_names(train_data)
+secret_data <- secret_data %>% select(-int_rate)
+
+secret_data_matrix = xgb.DMatrix(data = as.matrix(secret_data))
 
 # -----------------------------PREPROCESSING_END---------------------------------------
 
 # loading model
-model_xgb <- load()
+model_xgb <- readRDS("model_xgb.rds")
 
 ## Generate predictions
-predictions <- predict(model_xgb, preprocessed_test_data)
+predictions <- predict(model_xgb, secret_data_matrix)
 ## Calculate MSE
-actuals <- df$int_rate
+actuals <- df_united$int_rate
 mse <- mean((predictions - actuals)^2)
 mse
-
-
-
-
-
-
 
 
 
