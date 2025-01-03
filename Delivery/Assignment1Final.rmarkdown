@@ -1,0 +1,1006 @@
+---
+title: "Assignment 1 Final"
+format: html
+editor: visual
+---
+
+
+
+# Preparation
+
+## Set working Directory
+
+
+
+```{r}
+
+# This directory is in my laptop, therefore it will be access in here
+setwd("C:/Users/luisj/Documents/Github/FHDS6/RawData")
+```
+
+
+
+### Install Packages
+
+
+
+```{r}
+
+if (!requireNamespace("readr", quietly = TRUE)) {
+  install.packages("readr")
+}
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+if (!requireNamespace("caret", quietly = TRUE)) {
+  install.packages("caret")
+}
+if (!requireNamespace("leaps", quietly = TRUE)) {
+  install.packages("leaps")
+}
+if (!requireNamespace("corrplot", quietly = TRUE)) {
+  install.packages("corrplot")
+}
+if (!requireNamespace("tidyr", quietly = TRUE)) {
+  install.packages("tidyr")
+}
+if (!requireNamespace("randomForest", quietly = TRUE)) {
+  install.packages("randomForest")
+}
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car")
+}
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly")
+}
+if (!requireNamespace("parallel", quietly = TRUE)) {
+  install.packages("parallel")
+}
+if (!requireNamespace("xgboost", quietly = TRUE)) {
+  install.packages("xgboost")
+}
+```
+
+
+
+### Load Packages
+
+
+
+```{r}
+
+library(plotly)
+library(corrplot)
+library(readr)
+library(caret)
+library(leaps)
+library(tidyr)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+library(car)
+library(parallel)
+library(xgboost)
+```
+
+
+
+### Input Data
+
+
+
+```{r}
+
+data_path <- "C:/Users/luisj/Documents/Github/FHDS6/RawData/Assignment_1-Dataset.csv"
+
+# Input Dataset 1
+loan_data <- read_delim(data_path,
+                        delim = ";",
+                        show_col_types = FALSE,
+                        trim_ws = TRUE)
+
+rm(data_path)
+```
+
+
+
+# Cleaning
+
+### Omit Columns
+
+
+
+```{r}
+
+head(loan_data)
+```
+
+
+
+We omit some of the irrelevant columns
+
+
+
+```{r}
+
+loan_data <- subset(loan_data, select = -c(collection_recovery_fee,
+                                      installment,
+                                      funded_amnt,
+                                      funded_amnt_inv,
+                                      issue_d,
+                                      last_pymnt_amnt,
+                                      last_pymnt_d,
+                                      loan_status,
+                                      next_pymnt_d,
+                                      out_prncp,
+                                      out_prncp_inv,
+                                      pymnt_plan,
+                                      recoveries,
+                                      total_pymnt,
+                                      total_pymnt_inv,
+                                      total_rec_int,
+                                      total_rec_late_fee,
+                                      total_rec_prncp,
+                                      url,
+                                      desc,
+                                      emp_title,
+                                      verification_status,
+                                      title, 
+                                      initial_list_status,
+                                      last_credit_pull_d,
+                                      earliest_cr_line,
+                                      verification_status_joint))
+
+
+head(loan_data)
+```
+
+
+
+### Divide data by type
+
+Split the data into textual and numerical data sets for further processing
+
+
+
+```{r}
+
+column_types <- sapply(loan_data, class)
+
+unique_types <- unique(column_types)
+
+for (type in unique_types) {
+  df_type_name <- paste0("df_", gsub(" ", "_", type))
+  assign(df_type_name, loan_data[, column_types == type, drop = FALSE])
+  cat(paste("Data frame created for type:", df_type_name))
+}
+
+rm(loan_data, column_types, unique_types, type, df_type_name)
+```
+
+
+
+### Tidy up textual data
+
+Convert character columns to factors
+
+
+
+```{r}
+
+df_character <- data.frame(lapply(df_character, function(x) {
+  if (is.character(x)) {
+    as.factor(x)
+  } else {
+    x
+  }
+}), stringsAsFactors = FALSE)
+
+head(df_character)
+```
+
+
+
+### Tidy up numeric data
+
+Annual_Income / Checking percentage
+
+
+
+```{r}
+
+cat(round(mean(is.na(df_numeric$annual_inc)) * 100, 2), "%")
+```
+
+
+
+Annual_Income_Joint / Checking percentage
+
+
+
+```{r}
+
+cat(round(mean(is.na(df_numeric$annual_inc_joint)) * 100, 2), "%")
+```
+
+
+
+Open il 6m / Checking percentage
+
+
+
+```{r}
+
+cat(round(mean(is.na(df_numeric$open_il_6m)) * 100, 2), "%")
+```
+
+
+
+Looking at missing data
+
+
+
+```{r}
+
+missingCols <- names(df_numeric)[colSums(is.na(df_numeric)) > 0]
+if (length(missingCols) > 0) {
+  cat("Columns with missing values:", paste(missingCols, collapse = ", "), "\n")
+} else {
+  cat("No columns with mising values.\n")
+}
+
+rm(missingCols)
+```
+
+
+
+## Impute Data
+
+Either with Mean or 0
+
+
+
+```{r}
+
+df_numeric <- df_numeric %>%
+  # Impute with mean
+  mutate(
+    open_acc = ifelse(is.na(open_acc), mean(open_acc, na.rm = TRUE), open_acc),
+    total_acc = ifelse(is.na(total_acc), mean(total_acc, na.rm = TRUE), total_acc),
+    annual_inc = ifelse(is.na(annual_inc), mean(annual_inc, na.rm = TRUE), annual_inc),
+    revol_util = ifelse(is.na(revol_util), mean(revol_util, na.rm = TRUE), revol_util)
+  ) %>%
+  # Impute with 0
+  mutate_at(vars(collections_12_mths_ex_med, delinq_2yrs, inq_last_6mths,
+                 mths_since_last_record, revol_bal, open_acc_6m, open_il_6m,
+                 open_il_12m, open_il_24m, mths_since_rcnt_il, total_bal_il,
+                 inq_last_12m, acc_now_delinq, tot_coll_amt, tot_cur_bal,
+                 annual_inc_joint, dti_joint, mths_since_last_delinq,
+                 mths_since_last_major_derog, pub_rec, il_util,
+                 open_rv_12m, open_rv_24m, max_bal_bc, all_util,
+                 total_rev_hi_lim, inq_fi, total_cu_tl),
+            ~ ifelse(is.na(.), 0, .))
+```
+
+
+
+Check for missing values
+
+
+
+```{r}
+
+missingCols <- names(df_numeric)[colSums(is.na(df_numeric)) > 0]
+if (length(missingCols) > 0) {
+  cat("Columns with missing values:", paste(missingCols, collapse = ", "), "\n")
+} else {
+  cat("No columns with missing values.\n")
+}
+```
+
+
+
+Get rid of attributes with a standard variation of 0
+
+
+
+```{r}
+
+df_numeric = df_numeric[, sapply(df_numeric, function(x) sd(x) != 0)]
+```
+
+
+
+## Visualize correlation
+
+
+
+```{r}
+
+png("correlation_plot.png", width = 1720, height = 1720)
+```
+
+```{r}
+
+corrplot(cor(df_numeric), 
+         method = "color",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black")
+```
+
+
+
+Save the correlation Matrix
+
+
+
+```{r}
+
+corrplot(cor(df_numeric), 
+         method = "color",
+         tl.col = "black",
+         tl.srt = 45,
+         addCoef.col = "black")
+
+dev.off() # expect null device
+```
+
+
+
+Omit more values
+
+
+
+```{r}
+
+df_numeric <- df_numeric[, c("int_rate","loan_amnt", "annual_inc", "dti", 
+                                        "delinq_2yrs","mths_since_last_record",
+                                        "inq_last_6mths", "revol_util", 
+                                        "tot_cur_bal", "total_rev_hi_lim")]
+```
+
+
+
+### Combining Dataframes
+
+
+
+```{r}
+
+df_united <- cbind(df_numeric, df_character)
+
+rm(df_numeric, df_character)
+```
+
+
+
+Omit Zip Code since we have addr_state
+
+
+
+```{r}
+
+df_united <- df_united[, !(names(df_united) %in% c("zip_code"))]
+```
+
+
+
+Identify factor columns
+
+
+
+```{r}
+
+factor_cols <- sapply(df_united, is.factor)
+```
+
+
+
+Exclude intercept and create dummy variables for the factor columns
+
+
+
+```{r}
+
+dummy_vars <- model.matrix(~ . - 1, data = df_united[, factor_cols])
+```
+
+
+
+Combine dummy variables, excluding factor columns
+
+
+
+```{r}
+
+df_united <- cbind(df_united[, !factor_cols], dummy_vars)
+
+rm(dummy_vars, factor_cols)
+```
+
+```{r}
+
+correlation_matrix <- cor(df_united, use = "pairwise.complete.obs")
+png("correlation_plot_2.png", width = 1800, height = 1800)
+```
+
+```{r}
+
+corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
+```
+
+```{r}
+
+corrplot(correlation_matrix, method = "color", tl.col = "black", tl.srt = 45)
+dev.off()  # Close the file
+```
+
+
+
+### Outliers
+
+We analyse our numerical data for outliers, converting the data into long format for easier faceting.
+
+
+
+```{r}
+
+df_long <- df_united %>%
+  select(loan_amnt, annual_inc, dti, delinq_2yrs, mths_since_last_record,
+         inq_last_6mths, revol_util, tot_cur_bal, total_rev_hi_lim) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+```
+
+
+
+Boxplot with faceting
+
+
+
+```{r}
+
+ggplot(df_long, aes(x = variable, y = value)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(title = "Boxplots of Numeric Columns", x = "Variable", y = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 3)
+
+rm(df_long)
+```
+
+
+
+It seems like only loan_amnt does not have outliers. We decide to take out the outliers.
+
+We decide to remove outliers for revol_util, total_rev_hi_lim and dti.
+
+We also decide to perform capping on annual_inc, delinq_2yrs and inq_last_6mths.
+
+Helper function for IQR bounds
+
+
+
+```{r}
+
+get_iqr_bounds <- function(column) {
+  Q1 <- quantile(column, 0.25, na.rm = TRUE)
+  Q3 <- quantile(column, 0.75, na.rm = TRUE)
+  IQR_value <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR_value
+  upper_bound <- Q3 + 1.5 * IQR_value
+  return(c(lower_bound, upper_bound))
+}
+```
+
+
+
+Removing outliers in specified columns.
+
+
+
+```{r}
+
+for (col in c("revol_util", "total_rev_hi_lim", "dti")) {
+  bounds <- get_iqr_bounds(df_united[[col]])
+  df_united <- df_united[df_united[[col]] >= bounds[1] & 
+                         df_united[[col]] <= bounds[2], ]
+}
+```
+
+
+
+Capping outliers for specified columns
+
+
+
+```{r}
+
+for (col in c("annual_inc", "delinq_2yrs", "inq_last_6mths")) {
+  bounds <- get_iqr_bounds(df_united[[col]])
+  df_united[[col]] <- ifelse(df_united[[col]] < bounds[1], bounds[1], ifelse(df_united[[col]] > bounds[2], bounds[2], df_united[[col]]))
+}
+```
+
+
+
+Visualizing outliers with Boxplot again
+
+
+
+```{r}
+
+df_long <- df_united %>%
+  select(loan_amnt, annual_inc, dti, delinq_2yrs, mths_since_last_record,
+         inq_last_6mths, revol_util, tot_cur_bal, total_rev_hi_lim) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+```
+
+```{r}
+
+ggplot(df_long, aes(x = variable, y = value)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(title = "Boxplots of Numeric Columns", x = "Variable", y = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 3)
+
+rm(df_long, col, bounds, missingCols, correlation_matrix)
+```
+
+
+
+We decide to omittot_cur_bal and mths_since_last_record, given the remaining outliers.
+
+Removing delinq_2yrs for null values.
+
+
+
+```{r}
+
+df_united <- df_united %>% select(-tot_cur_bal, -mths_since_last_record, -delinq_2yrs)
+```
+
+
+
+### Cross Validation (K-METHOD)
+
+
+
+```{r}
+
+set.seed(1)
+head(df_united)
+```
+
+
+
+We decide to remove term60 months.
+
+
+
+```{r}
+
+df_united <- subset(df_united, select = -`term60 months`)
+```
+
+
+
+Splitting data into training and validation (90/10)
+
+
+
+```{r}
+
+train_index <- sample(1:nrow(df_united), 0.9 * nrow(df_united))
+train_data <- df_united[train_index, ]
+validation_data <- df_united[-train_index, ]
+```
+
+
+
+Set up 10 fold Cross validation control
+
+
+
+```{r}
+
+control <- trainControl(method = "cv", number = 10)
+```
+
+
+
+## Train linear model with cross-validation
+
+
+
+```{r}
+
+model <- train(int_rate ~ ., data = train_data, method = "lm", trControl = control)
+```
+
+
+
+Calculating evaluation metrics on validation set
+
+
+
+```{r}
+
+predictions <- predict(model, newdata = validation_data)
+```
+
+
+
+Calculating mean squared error (MSE)
+
+
+
+```{r}
+
+mse <- mean((validation_data$int_rate - predictions)^2)
+mse
+```
+
+
+
+### Checking Multicolinearity once more
+
+We receive an error for the Cross-validation approach
+
+"prediction from rank-deficient fit; attr(\*, "non-estim") has doubtful cases"
+
+Might be an issue with Multicolinearity
+
+
+
+```{r}
+
+final_model <- model$finalModel
+vif(final_model)
+```
+
+```{r}
+
+rm(control, train_data, validation_data, model, final_model)
+rm(train_index, predictions, train_index, mse, missingCols, col, bounds, correlation_matrix)
+```
+
+
+
+It seems there are aliased coefficients in the model.
+
+Some variables like home_ownershipMORTGAGE, home_ownershipOWN, home_ownershipRENT have very high VIF (e.g. 1.7e+05)
+
+This suggests a too high correlation and causes issues with multicollinearity.
+
+The other predictors like loan_amnt, annual_inc, dti, inq_last_6mths and revol_util have VIF values around 1, indicating no multicollinearity.
+
+We create another correlation matrix for analysis.
+
+
+
+```{r}
+
+cor_matrix_long <- as.data.frame(as.table(cor(df_united)))
+```
+
+
+
+Create an interactive heatmap (Enables zoom)
+
+
+
+```{r}
+
+plot_ly(data = cor_matrix_long, x = ~Var1, y = ~Var2, z = ~Freq, 
+        type = "heatmap", colors = colorRampPalette(c("blue", "white", "red"))(100)) %>%
+  layout(title = "Correlation Matrix", xaxis = list(title = ""), 
+         yaxis = list(title = ""))
+
+rm(cor_matrix_long)
+```
+
+
+
+The following seem to cause the issue with multicollinearity:
+
+-   homeowenrship_RENT
+
+-   home_ownershipMORTGAGE
+
+-   purposedebt_consolidation
+
+-   purposecredit_card
+
+
+
+```{r}
+
+df_united <- df_united %>%
+  select(-home_ownershipRENT, 
+         -purposedebt_consolidation)
+```
+
+
+
+## Cross Validation (K-METHOD) Second attampt
+
+
+
+```{r}
+
+set.seed(42)
+```
+
+
+
+Preparing training and validation dataset
+
+
+
+```{r}
+
+train_index <- sample(1:nrow(df_united), 0.9 * nrow(df_united))
+```
+
+```{r}
+
+train_data <- df_united[train_index, ]
+validation_data <- df_united[-train_index, ]
+```
+
+```{r}
+
+control <- trainControl(method = "cv", number = 10)
+```
+
+
+
+Train linear Model using cross-validation
+
+
+
+```{r}
+
+model <- train(int_rate ~ ., data = train_data, method = "lm", trControl = control)
+```
+
+```{r}
+
+predictions <- predict(model, newdata = validation_data)
+```
+
+
+
+Calculate MSE again
+
+
+
+```{r}
+
+mse <- mean((validation_data$int_rate - predictions)^2)
+mse
+
+# [1] 10.9398
+```
+
+```{r}
+
+rm(model, mse, predictions, train_index, control)
+```
+
+
+
+# Random Forest (Regression)
+
+We need to clean the function names for random forest.
+
+
+
+```{r}
+
+clean_column_names <- function(data) {
+  colnames(data) <- gsub(" ", "_", colnames(data))
+  colnames(data) <- gsub("\\`", "", colnames(data))
+  colnames(data) <- gsub("\\+", "_", colnames(data))
+  colnames(data) <- gsub("n/a", "_na", colnames(data))
+  return(data)
+}
+```
+
+```{r}
+
+train_data <- clean_column_names(train_data)
+validation_data <- clean_column_names(validation_data)
+```
+
+
+
+## Train a random forest model
+
+
+
+```{r}
+
+model_rf <- randomForest(int_rate ~ ., data = train_data,
+                         importance = FALSE,
+                         ntree = 100,
+                         mtry = 3, 
+                         do.trace = TRUE, 
+                         parallel = TRUE)
+```
+
+
+
+Make predictions for random forest
+
+
+
+```{r}
+
+predictions_rf <- predict(model_rf, newdata = validation_data)
+```
+
+
+
+Calculate MSE
+
+
+
+```{r}
+
+mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
+cat("MSE for Random Forest:", mse_rf, "\n")
+
+rm(train_data, validation_data, mse_rf)
+```
+
+
+
+### Sample Stratified Method
+
+Due to the limitations of our devices, we try stratified sampling.
+
+Dividing income into 5 equal-width ranges.
+
+
+
+```{r}
+
+df_stratified <- df_united %>%
+  mutate(income_range = cut(annual_inc, breaks = 5,
+                            labels = c("Very Low", "Low", "Medium", "High", "Very High")))
+```
+
+
+
+We make the sample data, 25% of each income range.
+
+
+
+```{r}
+
+df_stratified <- df_stratified %>%
+  group_by(income_range) %>%
+  sample_frac(size = 0.25) %>%
+  ungroup()
+```
+
+
+
+We remove the income range, to prevent multicollinearity.
+
+
+
+```{r}
+
+df_stratified <- subset(df_stratified, select = -c(income_range))
+```
+
+
+
+# Random Forest with stratified data
+
+
+
+```{r}
+
+train_index <- sample(1:nrow(df_stratified), 0.9 * nrow(df_stratified))
+train_data_strat <- df_stratified[train_index, ]
+validation_data_strat <- df_stratified[-train_index, ]
+```
+
+
+
+Cleaning column names again
+
+
+
+```{r}
+
+train_data_strat <- clean_column_names(train_data_strat)
+validation_data_strat <- clean_column_names(validation_data_strat)
+```
+
+
+
+Train a model with stratified Data.
+
+
+
+```{r}
+
+model_rf <- randomForest(int_rate ~ ., data = train_data_strat,
+                         importance = FALSE,
+                         ntree = 500,
+                         mtry = 3, 
+                         do.trace = TRUE, 
+                         parallel = TRUE)
+```
+
+```{r}
+
+predictions_rf <- predict(model_rf, newdata = validation_data_strat)
+```
+
+```{r}
+
+mse_rf <- mean((predictions_rf - validation_data$int_rate)^2)
+cat("MSE: ", mse_rf)
+```
+
+
+
+# XGBoost
+
+Lastly we try XGBoosting.
+
+
+
+```{r}
+
+dtrain <- xgb.DMatrix(data = as.matrix(train_data[,-1]), label = train_data$int_rate)
+```
+
+```{r}
+
+model_xgb <- xgboost(data = dtrain, max_depth = 10, eta = 0.1, nrounds = 100, objective = "reg:squarederror")
+```
+
+
+
+We test our Data, converting to XGBoost matrix and removing the target variable.
+
+
+
+```{r}
+
+dtest <- xgb.DMatrix(data = as.matrix(df_united[,-1]))
+```
+
+```{r}
+
+predictions <- predict(model_xgb, dtest)
+```
+
+
+
+We calculate the MSE
+
+
+
+```{r}
+
+actuals <- df$int_rate
+
+mse <- mean((predictions - actuals)^2)
+
+cat("MSE: ", mse)
+```
+
